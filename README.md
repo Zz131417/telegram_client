@@ -80,7 +80,9 @@ flutter run
 
 ## CI 自动构建
 
-`.github/workflows/build.yml` 在 GitHub Actions 上构建 **Android / Linux / Windows**
+`.github/workflows/build.yml` 在 GitHub Actions 上构建 **Android / Linux / Windows**。
+工作流在构建前会自动执行 `flutter create --platforms=linux,windows,android .` 生成宿主工程，
+因此仓库无需提交庞大的平台文件夹，fork 后开箱即跑。
 （unsigned 产物作为 artifact 上传）。触发方式：push 到 `main` 或手动 `workflow_dispatch`。
 
 - **macOS / iOS 故意不在此工作流中构建**：两者都需要 macOS runner 与 Apple 签名，
