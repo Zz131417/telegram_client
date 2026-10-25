@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 /// 全局主题：Telegram 蓝为主色，圆角 + 柔和阴影，亮/暗双主题。
 class AppTheme {
@@ -70,7 +71,7 @@ class AppTheme {
         centerTitle: false,
         titleSpacing: 16,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         color: surface,

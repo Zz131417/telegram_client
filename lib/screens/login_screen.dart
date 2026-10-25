@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
 import '../routes/transitions.dart';
 import '../services/auth_state.dart';
 import '../services/td_service.dart';
@@ -88,7 +89,8 @@ class _LoginScreenState extends State<LoginScreen> {
               )
                   .animate()
                   .scale(
-                    begin: const Offset(0.6, 0.6),
+                    begin: 0.6,
+                    end: 1.0,
                     duration: 420.ms,
                     curve: Curves.easeOutBack,
                   )

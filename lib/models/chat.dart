@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'message.dart';
 
 enum ChatType { private, group, channel }
