@@ -1,14 +1,14 @@
-# Build the client on GitHub Actions workers — WITHOUT macOS/iOS.
+# Build the client on GitHub Actions workers — iOS included, macOS app excluded.
 #
-# Intent: macOS and iOS builds need a paid/hosted macOS runner AND Apple code
-# signing. To keep the project's free macOS minutes for fork owners, those two
-# platforms are intentionally left out here. A fork can add them back by copying
-# the commented "macos"/"ios" job template at the bottom into this file.
+# Intent: a standalone macOS .app needs Apple signing, so we deliberately do NOT
+# build a macOS desktop app here. iOS is built on a macOS runner (simulator,
+# unsigned) so fork owners / users can grab a simulator build without signing.
 #
 # What this workflow does:
 #   - Android  (arm64-v8a / armeabi-v7a / x86_64) -> per-ABI APKs
 #   - Linux    (x64 / arm64)                       -> portable tar.gz bundles
 #   - Windows  (x64)                               -> zip bundle
+#   - iOS      (simulator, unsigned)               -> Runner.app for simulator
 #
 # Native libtdjson is loaded at *runtime* via dart:ffi and is NOT required to
 # compile, so the builds below succeed without placing any native library. Real
@@ -18,7 +18,7 @@
 # so the built binary compiles and runs but only logs in once you fill real
 # api_id / apiHash on your machine.
 
-name: Build (non-Apple)
+name: Build
 
 on:
   workflow_dispatch:
@@ -86,14 +86,12 @@ jobs:
             arch: x64
           - os: ubuntu-24.04-arm
             arch: arm64
-            flutter_arch: arm64
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
-          architecture: ${{ matrix.flutter_arch || 'x64' }}
           cache: true
       - name: Install Linux build dependencies
         run: |
@@ -149,38 +147,26 @@ jobs:
           path: telegram_client-windows-x64.zip
           if-no-files-found: error
 
-  # =====================================================================
-  # TEMPLATE — macOS / iOS (NOT built here; for fork owners to enable)
-  #
-  # macOS (needs a macOS runner + Apple signing; build unsigned via env):
-  #   macos:
-  #     name: macOS (universal)
-  #     runs-on: macos-15
-  #     steps:
-  #       - uses: actions/checkout@v7
-  #       - uses: subosito/flutter-action@v2
-  #         with: { flutter-version: '${{ env.FLUTTER_VERSION }}', channel: stable, cache: true }
-  #       - run: flutter config --enable-swift-package-manager
-  #       - run: flutter create --platforms=macos .
-  #       - run: flutter pub get
-  #       - name: Build macOS (unsigned)
-  #         env: { CODE_SIGNING_ALLOWED: "NO", CODE_SIGN_IDENTITY: "" }
-  #         run: flutter build macos --release
-  #       - uses: actions/upload-artifact@v7
-  #         with: { name: macos, path: build/macos/Build/Products/Release/Mithka.app }
-  #
-  # iOS (device IPA needs signing; simulator build is unsigned):
-  #   ios:
-  #     name: iOS (simulator)
-  #     runs-on: macos-15
-  #     steps:
-  #       - uses: actions/checkout@v7
-  #       - uses: subosito/flutter-action@v2
-  #         with: { flutter-version: '${{ env.FLUTTER_VERSION }}', channel: stable, cache: true }
-  #       - run: flutter config --enable-swift-package-manager
-  #       - run: flutter create --platforms=ios .
-  #       - run: flutter pub get
-  #       - run: flutter build ios --simulator --profile
-  #       - uses: actions/upload-artifact@v7
-  #         with: { name: ios-simulator, path: build/ios/iphonesimulator/Runner.app }
-  # =====================================================================
+  # ----------------------------------------------------------------- iOS (simulator, unsigned)
+  ios:
+    name: iOS (simulator)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Generate iOS host folder
+        run: flutter create --platforms=ios .
+      - name: Flutter dependencies
+        run: flutter pub get
+      - name: Build iOS (simulator, unsigned)
+        run: flutter build ios --simulator --profile
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-simulator
+          path: build/ios/iphonesimulator/Runner.app
+          if-no-files-found: error

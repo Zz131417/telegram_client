@@ -80,14 +80,12 @@ flutter run
 
 ## CI 自动构建
 
-`.github/workflows/build.yml` 在 GitHub Actions 上构建 **Android / Linux / Windows**。
-工作流在构建前会自动执行 `flutter create --platforms=linux,windows,android .` 生成宿主工程，
+`.github/workflows/build.yml` 在 GitHub Actions 上构建 **Android / Linux / Windows / iOS**。
+工作流在构建前会自动执行 `flutter create --platforms=...` 生成对应宿主工程，
 因此仓库无需提交庞大的平台文件夹，fork 后开箱即跑。
-（unsigned 产物作为 artifact 上传）。触发方式：push 到 `main` 或手动 `workflow_dispatch`。
 
-- **macOS / iOS 故意不在此工作流中构建**：两者都需要 macOS runner 与 Apple 签名，
-  为把免费 macOS 额度留给 fork 所有者，这里只构建非 Apple 平台。fork 后可在文件底部
-  的模板里把 `macos` / `ios` job 启用即可。
+- **iOS**：在 macOS runner 上构建 simulator 版（无签名），产物为可在模拟器运行的 `Runner.app`。
+- **macOS 桌面 App 故意不构建**：独立 `.app` 需要 Apple 签名，故此处只出 iOS、不出 macOS。
 - 构建出的二进制含占位凭据，能编译运行；登录需在本地填真实 `api_id` / `apiHash`。
 
 ## 关于接入实现
