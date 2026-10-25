@@ -163,13 +163,28 @@ jobs:
           path: build/ios/iphonesimulator/Runner.app
           if-no-files-found: error
 
+  # ----------------------------------------------------------------- Detect Apple signing secrets
+  # GitHub does not allow the `secrets` context in `if`, so we read the secret in
+  # a step's env (allowed) and emit a job output that later jobs can gate on.
+  detect-secrets:
+    name: Detect Apple signing secrets
+    runs-on: ubuntu-latest
+    outputs:
+      has-cert: ${{ steps.check.outputs.has-cert }}
+    steps:
+      - id: check
+        env:
+          CERT: ${{ secrets.APPLE_CERTIFICATE }}
+        run: |
+          if [ -n "$CERT" ]; then echo "has-cert=true" >> "$GITHUB_OUTPUT"; fi
+
   # ----------------------------------------------------------------- iOS IPA (real device, SIGNED)
-  # Only runs when Apple signing secrets are present. Fork owners fill these in
-  # repo Settings -> Secrets to produce a real-device .ipa.
+  # Runs only when Apple signing secrets are present (gated via detect-secrets).
   ios-ipa:
     name: iOS IPA (real device)
+    needs: detect-secrets
+    if: needs.detect-secrets.outputs.has-cert == 'true'
     runs-on: macos-15
-    if: "${{ secrets.APPLE_CERTIFICATE != '' }}"
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
