@@ -1,0 +1,26 @@
+name: telegram_client
+description: A beautiful, fluid Telegram client built with Flutter.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.4.0
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.1.1
+  cupertino_icons: ^1.0.6
+  # 让过渡/微交互更顺滑
+  flutter_animate: ^4.5.0
+  # 真实接入 TDLib 时会用到（现在用 mock，先放着）
+  # tdlib: ^1.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
