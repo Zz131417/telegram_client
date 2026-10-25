@@ -1,5 +1,5 @@
 name: telegram_client
-description: A beautiful, fluid Telegram client built with Flutter.
+description: A beautiful, fluid Telegram client built with Flutter (TDLib).
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -12,10 +12,11 @@ dependencies:
     sdk: flutter
   provider: ^6.1.1
   cupertino_icons: ^1.0.6
-  # 让过渡/微交互更顺滑
   flutter_animate: ^4.5.0
-  # 真实接入 TDLib 时会用到（现在用 mock，先放着）
-  # tdlib: ^1.5.0
+  path_provider: ^2.1.2
+  # 官方 TDLib (libtdjson) 的 Dart 封装。负责 load 原生库、收发 JSON、事件回调。
+  # 若 pub 解析失败，请运行 `flutter pub add tdlib` 拉取适配你 Flutter/Dart 版本的版本。
+  tdlib: ^1.5.0
 
 dev_dependencies:
   flutter_test:

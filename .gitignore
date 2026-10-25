@@ -45,7 +45,7 @@ pubspec.lock
 **/ios/**/*.moved-aside
 **/ios/**/*.pbxuser
 **/ios/**/*.perspectivev3
-**/ios/**/*sync/
+**/ios/**/*.sync/
 **/ios/**/.sconsign.dblite
 **/ios/**/.tags*
 **/ios/Flutter/Flutter.framework/
@@ -59,8 +59,9 @@ pubspec.lock
 **/ios/ServiceDefinitions.json
 **/ios/Runner/GeneratedPluginRegistrant.*
 
-# Secrets / credentials (NEVER commit)
-lib/config/secrets.dart
+# Secrets / credentials
+# NOTE: a placeholder `lib/config/secrets.dart` IS committed (holds only your
+# own dev app credentials). Do NOT paste production keys here.
 .env
 *.jks
 *.keystore

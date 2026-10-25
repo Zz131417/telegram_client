@@ -1,10 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../models/chat.dart';
 import '../models/message.dart';
 import '../services/td_service.dart';
 import '../widgets/message_bubble.dart';
 
-/// 聊天详情页：消息列表滑入动画 + Hero 头像衔接 + 底部输入栏。
+/// 聊天详情页：真实拉取历史 + 订阅新消息 + 发送文本。
 class ChatDetailScreen extends StatefulWidget {
   const ChatDetailScreen({super.key, required this.chat});
   final Chat chat;
@@ -14,34 +16,43 @@ class ChatDetailScreen extends StatefulWidget {
 }
 
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
-  final _service = MockTdService();
   final _controller = TextEditingController();
   final _scroll = ScrollController();
   List<Message> _messages = const [];
   bool _loading = true;
+  late final StreamSubscription<Message> _sub;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    final sv = context.read<TdService>();
+    _sub = sv.messageUpdates.listen(_onNewMessage);
+    _load(sv);
   }
 
-  Future<void> _load() async {
-    final list = await _service.loadMessages(widget.chat.id);
+  Future<void> _load(TdService sv) async {
+    final list = await sv.loadMessages(widget.chat.id);
     if (mounted) {
       setState(() {
         _messages = list;
         _loading = false;
       });
-      _scroll.jumpTo(_scroll.position.maxScrollExtent);
+      _scrollToBottom();
     }
+  }
+
+  void _onNewMessage(Message msg) {
+    if (msg.chatId != widget.chat.id) return;
+    setState(() => _messages = [..._messages, msg]);
+    _scrollToBottom();
   }
 
   void _send() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-    final msg = Message(
-      id: '${DateTime.now().millisecondsSinceEpoch}',
+    // 先本地乐观插入，保证即时反馈；真实回执会通过 updateNewMessage 再次到达。
+    final optimistic = Message(
+      id: 'local-${DateTime.now().millisecondsSinceEpoch}',
       chatId: widget.chat.id,
       text: text,
       senderName: '我',
@@ -49,9 +60,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       time: DateTime.now(),
     );
     setState(() {
-      _messages = [..._messages, msg];
+      _messages = [..._messages, optimistic];
       _controller.clear();
     });
+    _scrollToBottom();
+    context.read<TdService>().sendMessage(widget.chat.id, text);
+  }
+
+  void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scroll.hasClients) {
         _scroll.animateTo(
@@ -61,6 +77,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         );
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _sub.cancel();
+    _controller.dispose();
+    _scroll.dispose();
+    super.dispose();
   }
 
   @override
