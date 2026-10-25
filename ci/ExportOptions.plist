@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+  <key>method</key>
+  <string>__EXPORT_METHOD__</string>
+  <key>teamID</key>
+  <string>__TEAM_ID__</string>
+  <key>signingStyle</key>
+  <string>manual</string>
+  <key>stripSwiftSymbols</key>
+  <true/>
+</dict>
+</plist>

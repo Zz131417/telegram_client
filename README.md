@@ -86,7 +86,16 @@ flutter run
 
 - **Linux 只出 x64**：Flutter 官方 Linux SDK 仅 x86-64；arm64 Linux 官方未发布，
   无法用官方 SDK 在 CI 编译（如需 arm64 需自行编译或社区 SDK）。
-- **iOS**：在 macOS runner 上构建 simulator 版（debug / 无签名），产物 `Runner.app` 可直接拖进模拟器。
+- **iOS 模拟器**：在 macOS runner 上构建 simulator 版（debug / 无签名），产物 `Runner.app` 可直接拖进模拟器。
+- **iOS 真机 `.ipa`（可选）**：`build.yml` 里有 `ios-ipa` job，但用 `if: secrets.APPLE_CERTIFICATE != ''`
+  守护——**只有仓库（或 fork）在 Settings → Secrets 填了 Apple 签名凭据才会跑**，否则自动跳过，
+  不影响其它平台。填了以下 Secrets 即可出真机签名 `.ipa`：
+  - `APPLE_CERTIFICATE`（p12 证书 base64）
+  - `APPLE_CERTIFICATE_PASSWORD`（p12 密码）
+  - `APPLE_PROVISIONING_PROFILE`（mobileprovision base64）
+  - `APPLE_TEAM_ID`（开发者团队 ID）
+  - 可选 `APPLE_EXPORT_METHOD`（默认 `development`；可改 `ad-hoc` / `app-store`）、`KEYCHAIN_PASSWORD`
+  > 需要付费 Apple 开发者账号（$99/年）。免费个人账号无法在 CI 非交互签名。
 - **macOS 桌面 App 故意不构建**：独立 `.app` 需要 Apple 签名，故此处只出 iOS、不出 macOS。
 - 构建出的二进制含占位凭据，能编译运行；登录需在本地填真实 `api_id` / `apiHash`。
 

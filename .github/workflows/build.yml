@@ -1,24 +1,27 @@
-# Build the client on GitHub Actions workers — iOS included, macOS app excluded.
+# Build the client on GitHub Actions workers.
 #
-# Intent: a standalone macOS .app needs Apple signing, so we deliberately do NOT
-# build a macOS desktop app here. iOS is built on a macOS runner (simulator,
-# unsigned / debug) so fork owners / users can grab a simulator build.
-#
-# What this workflow does:
+# Targets:
 #   - Android  (arm64-v8a / armeabi-v7a / x86_64) -> per-ABI APKs
 #   - Linux    (x64 only — Flutter's official Linux SDK is x86-64; arm64 Linux
 #               is not published by Flutter, so it cannot be built from the
 #               official SDK on CI)                       -> portable tar.gz
 #   - Windows  (x64)                               -> zip bundle
 #   - iOS      (simulator, debug, unsigned)         -> Runner.app for simulator
+#   - iOS IPA  (real device, SIGNED)               -> .ipa   [needs Apple secrets]
+#
+# The `ios-ipa` job is OPTIONAL: it only runs when the repo (or a fork) has the
+# Apple signing secrets configured (APPLE_CERTIFICATE etc.). Without them the
+# job is skipped, so the rest of the build is unaffected. Fill those secrets to
+# get a real-device .ipa.
 #
 # Native libtdjson is loaded at *runtime* via dart:ffi and is NOT required to
 # compile, so the builds below succeed without placing any native library. Real
 # Telegram login only needs libtdjson on the end user's machine (see README).
 #
-# Secrets: none required. The repo ships a placeholder lib/config/secrets.dart,
-# so the built binary compiles and runs but only logs in once you fill real
-# api_id / apiHash on your machine.
+# Secrets: none required for Android/Linux/Windows/iOS-simulator.
+#          For ios-ipa: APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD,
+#          APPLE_PROVISIONING_PROFILE, APPLE_TEAM_ID (and optionally
+#          APPLE_EXPORT_METHOD, default: development).
 
 name: Build
 
@@ -158,4 +161,60 @@ jobs:
         with:
           name: ios-simulator
           path: build/ios/iphonesimulator/Runner.app
+          if-no-files-found: error
+
+  # ----------------------------------------------------------------- iOS IPA (real device, SIGNED)
+  # Only runs when Apple signing secrets are present. Fork owners fill these in
+  # repo Settings -> Secrets to produce a real-device .ipa.
+  ios-ipa:
+    name: iOS IPA (real device)
+    runs-on: macos-15
+    if: ${{ secrets.APPLE_CERTIFICATE != '' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate iOS host folder
+        run: flutter create --platforms=ios .
+      - name: Flutter dependencies
+        run: flutter pub get
+      - name: Install the Apple certificate and provisioning profile
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE }}
+          P12_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD || 'temppass' }}
+        run: |
+          CERT_PATH="$RUNNER_TEMP/build_certificate.p12"
+          PP_PATH="$RUNNER_TEMP/build_pp.mobileprovision"
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o "$CERT_PATH"
+          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o "$PP_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$P12_PASSWORD" -A -t cert \
+            -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+          security set-key-partition-list -S apple-tool:,apple: -s \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles
+      - name: Render ExportOptions.plist
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          EXPORT_METHOD: ${{ secrets.APPLE_EXPORT_METHOD || 'development' }}
+        run: |
+          sed -e "s/__TEAM_ID__/$TEAM_ID/" \
+              -e "s/__EXPORT_METHOD__/$EXPORT_METHOD/" \
+              ci/ExportOptions.plist > ios/ExportOptions.plist
+      - name: Build iOS IPA (signed)
+        run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+      - name: Upload IPA
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-ipa
+          path: build/ios/ipa/*.ipa
           if-no-files-found: error
