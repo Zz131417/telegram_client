@@ -169,7 +169,7 @@ jobs:
   ios-ipa:
     name: iOS IPA (real device)
     runs-on: macos-15
-    if: ${{ secrets.APPLE_CERTIFICATE != '' }}
+    if: "${{ secrets.APPLE_CERTIFICATE != '' }}"
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
