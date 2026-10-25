@@ -14,9 +14,10 @@ dependencies:
   cupertino_icons: ^1.0.6
   flutter_animate: ^4.5.0
   path_provider: ^2.1.2
-  # 官方 TDLib (libtdjson) 的 Dart 封装。负责 load 原生库、收发 JSON、事件回调。
-  # 若 pub 解析失败，请运行 `flutter pub add tdlib` 拉取适配你 Flutter/Dart 版本的版本。
-  tdlib: ^1.5.0
+  collection: ^1.18.0
+  # TDLib Dart bindings with native prebuilt resolution (auto-bundles libtdjson
+  # for Android/Linux/Windows/macOS/iOS at build time — no manual lib placement).
+  tdlib2: ^1.8.64
 
 dev_dependencies:
   flutter_test:

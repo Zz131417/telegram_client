@@ -1,0 +1,173 @@
+# Build the client on GitHub Actions workers — WITHOUT macOS/iOS.
+#
+# Intent: macOS and iOS builds need a paid/hosted macOS runner AND Apple code
+# signing. To keep the project's free macOS minutes for fork owners, those two
+# platforms are intentionally left out here. A fork can add them back by copying
+# the commented "macos"/"ios" job template at the bottom into this file.
+#
+# What this workflow does:
+#   - Android  (arm64-v8a / armeabi-v7a / x86_64) -> per-ABI APKs
+#   - Linux    (x64 / arm64)                       -> portable tar.gz bundles
+#   - Windows  (x64)                               -> zip bundle
+#
+# Native libtdjson is auto-resolved and bundled by the `tdlib2` package's native
+# asset hook during `flutter pub get`, so no manual lib placement is needed here.
+#
+# Secrets: none required. The repo ships a placeholder lib/config/secrets.dart,
+# so the built binary compiles and runs but only logs in once you fill real
+# api_id / apiHash on your machine.
+
+name: Build (non-Apple)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: '3.44.2'
+
+jobs:
+  # ----------------------------------------------------------------- Android
+  android:
+    name: Android (${{ matrix.abi }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - abi: arm64-v8a
+            target: android-arm64
+          - abi: armeabi-v7a
+            target: android-arm
+          - abi: x86_64
+            target: android-x64
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Flutter dependencies (triggers tdlib2 native-asset hook)
+        run: flutter pub get
+      - name: Build ${{ matrix.abi }} APK
+        run: flutter build apk --release --split-per-abi --target-platform ${{ matrix.target }}
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-${{ matrix.abi }}
+          path: build/app/outputs/flutter-apk/app-${{ matrix.abi }}-release.apk
+          if-no-files-found: error
+
+  # ----------------------------------------------------------------- Linux
+  linux:
+    name: Linux (${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            arch: x64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake libgtk-3-dev liblzma-dev \
+            libsecret-1-dev libjsoncpp-dev libopus-dev libpulse0 \
+            patchelf xvfb
+      - name: Flutter dependencies (triggers tdlib2 native-asset hook)
+        run: flutter pub get
+      - name: Build Linux ${{ matrix.arch }}
+        run: flutter build linux --release --target-platform=linux-${{ matrix.arch }}
+      - name: Package bundle
+        run: |
+          bundle="build/linux/${{ matrix.arch }}/release/bundle"
+          tar -C "$bundle" -czf "telegram_client-linux-${{ matrix.arch }}.tar.gz" .
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-${{ matrix.arch }}
+          path: telegram_client-linux-${{ matrix.arch }}.tar.gz
+          if-no-files-found: error
+
+  # ----------------------------------------------------------------- Windows
+  windows:
+    name: Windows (x64)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Flutter dependencies (triggers tdlib2 native-asset hook)
+        run: flutter pub get
+      - name: Build Windows
+        run: flutter build windows --release
+      - name: Package bundle
+        shell: pwsh
+        run: |
+          Compress-Archive -Path build/windows/x64/runner/Release/* `
+            -Destination telegram_client-windows-x64.zip
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-x64
+          path: telegram_client-windows-x64.zip
+          if-no-files-found: error
+
+  # =====================================================================
+  # TEMPLATE — macOS / iOS (NOT built here; for fork owners to enable)
+  #
+  # macOS (needs a macOS runner + Apple signing; build unsigned via env):
+  #   macos:
+  #     name: macOS (universal)
+  #     runs-on: macos-15
+  #     steps:
+  #       - uses: actions/checkout@v7
+  #       - uses: subosito/flutter-action@v2
+  #         with: { flutter-version: '${{ env.FLUTTER_VERSION }}', channel: stable, cache: true }
+  #       - run: flutter config --enable-swift-package-manager
+  #       - run: flutter pub get
+  #       - name: Build macOS (unsigned)
+  #         env: { CODE_SIGNING_ALLOWED: "NO", CODE_SIGN_IDENTITY: "" }
+  #         run: flutter build macos --release
+  #       - uses: actions/upload-artifact@v7
+  #         with: { name: macos, path: build/macos/Build/Products/Release/Mithka.app }
+  #
+  # iOS (device IPA needs signing; simulator build is unsigned):
+  #   ios:
+  #     name: iOS (simulator)
+  #     runs-on: macos-15
+  #     steps:
+  #       - uses: actions/checkout@v7
+  #       - uses: subosito/flutter-action@v2
+  #         with: { flutter-version: '${{ env.FLUTTER_VERSION }}', channel: stable, cache: true }
+  #       - run: flutter config --enable-swift-package-manager
+  #       - run: flutter pub get
+  #       - run: flutter build ios --simulator --profile
+  #       - uses: actions/upload-artifact@v7
+  #         with: { name: ios-simulator, path: build/ios/iphonesimulator/Runner.app }
+  # =====================================================================

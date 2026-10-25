@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import '../models/chat.dart';
 import '../models/message.dart';
@@ -28,7 +29,8 @@ class ChatsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Chat? chatById(String id) => _chats.where((c) => c.id == id).firstOrNull;
+  Chat? chatById(String id) =>
+      _chats.where((c) => c.id == id).firstOrNull;
 
   void _onNewMessage(Message message) {
     _chats = _chats.map((c) {
