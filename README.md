@@ -80,11 +80,13 @@ flutter run
 
 ## CI 自动构建
 
-`.github/workflows/build.yml` 在 GitHub Actions 上构建 **Android / Linux / Windows / iOS**。
+`.github/workflows/build.yml` 在 GitHub Actions 上构建 **Android / Linux(x64) / Windows / iOS(模拟器)**。
 工作流在构建前会自动执行 `flutter create --platforms=...` 生成对应宿主工程，
 因此仓库无需提交庞大的平台文件夹，fork 后开箱即跑。
 
-- **iOS**：在 macOS runner 上构建 simulator 版（无签名），产物为可在模拟器运行的 `Runner.app`。
+- **Linux 只出 x64**：Flutter 官方 Linux SDK 仅 x86-64；arm64 Linux 官方未发布，
+  无法用官方 SDK 在 CI 编译（如需 arm64 需自行编译或社区 SDK）。
+- **iOS**：在 macOS runner 上构建 simulator 版（debug / 无签名），产物 `Runner.app` 可直接拖进模拟器。
 - **macOS 桌面 App 故意不构建**：独立 `.app` 需要 Apple 签名，故此处只出 iOS、不出 macOS。
 - 构建出的二进制含占位凭据，能编译运行；登录需在本地填真实 `api_id` / `apiHash`。
 

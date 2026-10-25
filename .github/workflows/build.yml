@@ -2,13 +2,15 @@
 #
 # Intent: a standalone macOS .app needs Apple signing, so we deliberately do NOT
 # build a macOS desktop app here. iOS is built on a macOS runner (simulator,
-# unsigned) so fork owners / users can grab a simulator build without signing.
+# unsigned / debug) so fork owners / users can grab a simulator build.
 #
 # What this workflow does:
 #   - Android  (arm64-v8a / armeabi-v7a / x86_64) -> per-ABI APKs
-#   - Linux    (x64 / arm64)                       -> portable tar.gz bundles
+#   - Linux    (x64 only — Flutter's official Linux SDK is x86-64; arm64 Linux
+#               is not published by Flutter, so it cannot be built from the
+#               official SDK on CI)                       -> portable tar.gz
 #   - Windows  (x64)                               -> zip bundle
-#   - iOS      (simulator, unsigned)              -> Runner.app for simulator
+#   - iOS      (simulator, debug, unsigned)         -> Runner.app for simulator
 #
 # Native libtdjson is loaded at *runtime* via dart:ffi and is NOT required to
 # compile, so the builds below succeed without placing any native library. Real
@@ -70,18 +72,10 @@ jobs:
           path: build/app/outputs/flutter-apk/app-${{ matrix.abi }}-release.apk
           if-no-files-found: error
 
-  # ----------------------------------------------------------------- Linux
+  # ----------------------------------------------------------------- Linux (x64)
   linux:
-    name: Linux (${{ matrix.arch }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-24.04
-            arch: x64
-          - os: ubuntu-24.04-arm
-            arch: arm64
+    name: Linux (x64)
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
@@ -98,17 +92,17 @@ jobs:
         run: flutter create --platforms=linux,windows,android .
       - name: Flutter dependencies
         run: flutter pub get
-      - name: Build Linux ${{ matrix.arch }}
-        run: flutter build linux --release --target-platform=linux-${{ matrix.arch }}
+      - name: Build Linux
+        run: flutter build linux --release
       - name: Package bundle
         run: |
-          bundle="build/linux/${{ matrix.arch }}/release/bundle"
-          tar -C "$bundle" -czf "telegram_client-linux-${{ matrix.arch }}.tar.gz" .
+          bundle="build/linux/x64/release/bundle"
+          tar -C "$bundle" -czf "telegram_client-linux-x64.tar.gz" .
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: linux-${{ matrix.arch }}
-          path: telegram_client-linux-${{ matrix.arch }}.tar.gz
+          name: linux-x64
+          path: telegram_client-linux-x64.tar.gz
           if-no-files-found: error
 
   # ----------------------------------------------------------------- Windows
@@ -141,7 +135,7 @@ jobs:
           path: telegram_client-windows-x64.zip
           if-no-files-found: error
 
-  # ----------------------------------------------------------------- iOS (simulator, unsigned)
+  # ----------------------------------------------------------------- iOS (simulator, debug, unsigned)
   ios:
     name: iOS (simulator)
     runs-on: macos-15
@@ -155,8 +149,10 @@ jobs:
         run: flutter create --platforms=ios .
       - name: Flutter dependencies
         run: flutter pub get
-      - name: Build iOS (simulator, unsigned)
-        run: flutter build ios --simulator --release
+      # Simulator builds only support debug mode (JIT); release/profile are
+      # rejected by Flutter for the simulator target. Debug needs no signing.
+      - name: Build iOS (simulator, debug, unsigned)
+        run: flutter build ios --simulator --debug
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
