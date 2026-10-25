@@ -2,8 +2,9 @@
 
 一个用 Flutter 从零编写的 Telegram 客户端，强调流畅的界面过渡与美观的视觉体验。
 基于官方开源的 [TDLib](https://core.telegram.org/tdlib)（Telegram Database Library），
-通过社区标准 Dart 封装 [`tdlib2`](https://pub.dev/packages/tdlib2) 接入——它在构建时
-自动拉取并打包各平台原生 `libtdjson`，无需手动放置原生库。
+通过 `dart:ffi` 直接绑定官方 [`libtdjson`](https://core.telegram.org/tdlib) 的 JSON 接口，
+不依赖任何第三方 TDLib Dart 封装，因此各平台 `flutter pub get` 与编译都干净通过；
+原生库在运行时按需加载（找不到时 App 不会崩溃，仅真实登录不可用）。
 
 > 本项目为个人/学习用途的非官方客户端。使用需遵守 Telegram 服务条款与 API 限制。
 
@@ -55,9 +56,19 @@ cp lib/config/secrets_example.dart lib/config/secrets.dart
 ```
 应用检测到已配置后会自动启用真实 `TdLibServiceImpl`。
 
-### 3. 原生库（自动）
-`tdlib2` 在 `flutter pub get` 阶段通过 native-asset hook 自动下载并打包对应平台的
-`libtdjson`，无需手动放置。如需强制从源码编译，见 `tdlib2` 包文档。
+### 3. 放置原生 libtdjson（真实登录需要）
+`TdLibServiceImpl` 在运行时用 `DynamicLibrary.open` 加载官方原生库，各平台放置位置：
+
+| 平台 | 文件 | 放置位置 |
+|------|------|----------|
+| Android | `libtdjson.so` | `android/app/src/main/jniLibs/<abi>/`（armeabi-v7a, arm64-v8a, x86_64） |
+| iOS | `libtdjson.dylib` | 链接进 Runner（Xcode Frameworks） |
+| macOS | `libtdjson.dylib` | `macos/Runner/Frameworks/` 或 app 包内 |
+| Windows | `tdjson.dll` + 依赖 | 与 `.exe` 同级目录 |
+| Linux | `libtdjson.so` | 与可执行文件同级，或系统 lib 路径 |
+
+未放置时 App 仍可启动并预览界面（走 Mock），只是真实登录会提示「加载 libtdjson 失败」。
+预编译库可从官方 TDLib 的 GitHub Release 或社区预编译包获取。
 
 ### 4. 运行
 ```bash
@@ -77,10 +88,10 @@ flutter run
   的模板里把 `macos` / `ios` job 启用即可。
 - 构建出的二进制含占位凭据，能编译运行；登录需在本地填真实 `api_id` / `apiHash`。
 
-## 关于 `tdlib2` 包版本
-`td_lib_service.dart` 中的类型与调用基于 `tdlib2` 的常见 API 形态。若你
-`flutter pub get` 后该文件出现类型/字段不匹配，通常只需在此单文件内按所用版本微调，
-UI 与 Provider 不受影响。
+## 关于接入实现
+`td_lib_service.dart` 直接用 `dart:ffi` 调用 libtdjson 的 JSON 接口（create/send/receive），
+自行解析协议 JSON 到我方领域模型。所有 FFI / 协议细节都收敛在本文件与 `td_native.dart`，
+UI 与 Provider 完全不感知 TDLib。若 TDLib 协议字段有出入，只需微调这两个文件。
 
 ## 许可证
 

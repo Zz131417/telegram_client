@@ -15,9 +15,7 @@ dependencies:
   flutter_animate: ^4.5.0
   path_provider: ^2.1.2
   collection: ^1.18.0
-  # TDLib Dart bindings with native prebuilt resolution (auto-bundles libtdjson
-  # for Android/Linux/Windows/macOS/iOS at build time — no manual lib placement).
-  tdlib2: ^1.8.64
+  ffi: ^2.1.3
 
 dev_dependencies:
   flutter_test:
