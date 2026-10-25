@@ -86,12 +86,14 @@ jobs:
             arch: x64
           - os: ubuntu-24.04-arm
             arch: arm64
+            flutter_arch: arm64
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
+          architecture: ${{ matrix.flutter_arch || 'x64' }}
           cache: true
       - name: Install Linux build dependencies
         run: |

@@ -37,20 +37,29 @@ class AppTheme {
     required Color onBubble,
     required Color hint,
   }) {
-    final colorScheme = ColorScheme(
-      brightness: brightness,
-      primary: primary,
-      onPrimary: Colors.white,
-      secondary: primary,
-      onSecondary: Colors.white,
-      surface: surface,
-      onSurface: brightness == Brightness.light
-          ? const Color(0xFF1C2733)
-          : const Color(0xFFE9EDF2),
-      error: const Color(0xFFE84C3D),
-      onError: Colors.white,
-      outline: Colors.transparent,
-    );
+    final colorScheme = brightness == Brightness.light
+        ? ColorScheme.light(
+            primary: primary,
+            onPrimary: Colors.white,
+            secondary: primary,
+            onSecondary: Colors.white,
+            surface: surface,
+            onSurface: const Color(0xFF1C2733),
+            error: const Color(0xFFE84C3D),
+            onError: Colors.white,
+            outline: Colors.transparent,
+          )
+        : ColorScheme.dark(
+            primary: primary,
+            onPrimary: Colors.white,
+            secondary: primary,
+            onSecondary: Colors.white,
+            surface: surface,
+            onSurface: const Color(0xFFE9EDF2),
+            error: const Color(0xFFE84C3D),
+            onError: Colors.white,
+            outline: Colors.transparent,
+          );
 
     return ThemeData(
       useMaterial3: true,

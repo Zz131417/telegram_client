@@ -11,7 +11,7 @@ class MockData {
       title: '林晚',
       type: ChatType.private,
       avatarColor: const Color(0xFFE8846B),
-      lastMessage: const Message(
+      lastMessage: Message(
         id: 'm1',
         chatId: 'c1',
         text: '刚到家，路上看到超好看的晚霞 🌇',
@@ -26,7 +26,7 @@ class MockData {
       title: 'Flutter 中文社区',
       type: ChatType.group,
       avatarColor: const Color(0xFF5BAE8E),
-      lastMessage: const Message(
+      lastMessage: Message(
         id: 'm2',
         chatId: 'c2',
         text: '本周 meetup 主题定了：Impeller 渲染管线',
@@ -41,7 +41,7 @@ class MockData {
       title: '设计灵感',
       type: ChatType.channel,
       avatarColor: const Color(0xFF8A6FE8),
-      lastMessage: const Message(
+      lastMessage: Message(
         id: 'm3',
         chatId: 'c3',
         text: '每日一图：极简主义配色方案',
@@ -57,7 +57,7 @@ class MockData {
       title: '妈妈',
       type: ChatType.private,
       avatarColor: const Color(0xFFE8B14C),
-      lastMessage: const Message(
+      lastMessage: Message(
         id: 'm4',
         chatId: 'c4',
         text: '记得吃饭 🍚',
@@ -73,7 +73,7 @@ class MockData {
     final base = DateTime.now();
     if (chatId == 'c1') {
       return [
-        const Message(
+        Message(
           id: 'c1m1',
           chatId: 'c1',
           text: '在忙吗？',
@@ -81,7 +81,7 @@ class MockData {
           isOutgoing: false,
           time: _t(18, 38),
         ),
-        const Message(
+        Message(
           id: 'c1m2',
           chatId: 'c1',
           text: '刚开完会，怎么啦',
@@ -89,7 +89,7 @@ class MockData {
           isOutgoing: true,
           time: _t(18, 39),
         ),
-        const Message(
+        Message(
           id: 'c1m3',
           chatId: 'c1',
           text: '刚到家，路上看到超好看的晚霞 🌇',
@@ -101,7 +101,7 @@ class MockData {
     }
     if (chatId == 'c4') {
       return [
-        const Message(
+        Message(
           id: 'c4m1',
           chatId: 'c4',
           text: '中午吃了什么',
@@ -109,7 +109,7 @@ class MockData {
           isOutgoing: false,
           time: _t(12, 5),
         ),
-        const Message(
+        Message(
           id: 'c4m2',
           chatId: 'c4',
           text: '记得吃饭 🍚',

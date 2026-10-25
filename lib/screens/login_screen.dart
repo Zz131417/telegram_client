@@ -89,8 +89,8 @@ class _LoginScreenState extends State<LoginScreen> {
               )
                   .animate()
                   .scale(
-                    begin: 0.6,
-                    end: 1.0,
+                    begin: const Offset(0.6, 0.6),
+                    end: const Offset(1.0, 1.0),
                     duration: 420.ms,
                     curve: Curves.easeOutBack,
                   )
