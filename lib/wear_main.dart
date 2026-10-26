@@ -6,8 +6,8 @@ import 'theme/app_theme.dart';
 
 /// Wear OS 入口：手表 companion 界面（展示最近会话）。
 ///
-/// 与手机端共用同一套模型与主题。针对小表盘做布局适配：用 `MediaQuery`
-/// 的短边判断是否为手表屏，圆屏/方屏统一给较大内边距避免被表圈裁切。
+/// 与手机端共用同一套模型与主题。针对手表屏做布局适配：通过 `MediaQuery` 的
+/// system padding 区分圆屏/方屏——圆屏用较大内边距避开表圈，方屏紧凑即可。
 /// 手表端暂不接入完整登录流程（UX 成本过高），使用 Mock 数据展示最近会话
 /// 概览，作为手机端的 glanceable companion。
 ///
@@ -59,12 +59,15 @@ class _WearHomeState extends State<WearHome> {
 
   @override
   Widget build(BuildContext context) {
-    // 手表屏短边通常较小；统一给安全内边距，避免圆屏表圈裁切内容。
-    final shortest = MediaQuery.of(context).size.shortestSide;
-    final pad = shortest < 320 ? 24.0 : 8.0;
+    // 区分圆屏 / 方屏：Wear OS 在圆屏上会给左右 system padding 留出比上下更大的
+    // 安全区（系统自动避开圆形表圈），方屏则四周均匀。据此判断——圆屏用较大内边距
+    // 防表圈裁切，方屏紧凑即可。纯 Flutter 实现，无需第三方 Wear 包。
+    final pad = MediaQuery.of(context).padding;
+    final isRound = (pad.left + pad.right) > (pad.top + pad.bottom) + 4;
+    final edge = isRound ? 24.0 : 8.0;
     return Scaffold(
       body: Padding(
-        padding: EdgeInsets.all(pad),
+        padding: EdgeInsets.all(edge),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
