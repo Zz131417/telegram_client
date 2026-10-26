@@ -1,13 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import '../config/credentials.dart';
 import '../routes/transitions.dart';
 import '../services/auth_state.dart';
+import '../services/td_lib_service.dart';
 import '../services/td_service.dart';
+import '../services/service_notifier.dart';
 import 'chats_screen.dart';
 
-/// 登录页（真实接入）：根据 TDLib 授权状态机切换步骤
+/// 登录页（真实接入）：先让用户选择凭据来源，再按 TDLib 授权状态机切换步骤
 /// 手机号 → 验证码 → 两步密码 → 就绪。
+///
+/// 凭据来源：
+///  - 官方：使用仓库内置预设凭据（Credentials.builtIn*）。
+///  - 自己输入：用户填入自己的 api_id / api_hash（推荐，避免共用一组导致限流/封号）。
+///  - 仅预览：不登录，直接走 Mock 数据预览完整 UI 与过渡动画。
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -19,18 +29,58 @@ class _LoginScreenState extends State<LoginScreen> {
   final _phone = TextEditingController();
   final _code = TextEditingController();
   final _password = TextEditingController();
+  final _customId = TextEditingController();
+  final _customHash = TextEditingController();
+
+  /// 凭据选择阶段 / 授权阶段。
+  bool _choosing = true;
+  bool _enteringCustom = false;
 
   AuthState _step = AuthState.initial;
   String? _error;
   bool _navigated = false;
+  StreamSubscription<AuthEvent>? _sub;
 
   @override
-  void initState() {
-    super.initState();
-    final sv = context.read<TdService>();
-    sv.authEvents.listen(_onAuth);
-    sv.init();
+  void dispose() {
+    _sub?.cancel();
+    _phone.dispose();
+    _code.dispose();
+    _password.dispose();
+    _customId.dispose();
+    _customHash.dispose();
+    super.dispose();
   }
+
+  /// 选定凭据后激活对应服务：替换为真实 TDLib（或 Mock 预览），订阅事件并 init。
+  void _activate(TdService svc) {
+    _sub?.cancel();
+    context.read<ServiceNotifier>().service = svc;
+    _sub = svc.authEvents.listen(_onAuth);
+    svc.init();
+    if (mounted) setState(() => _choosing = false);
+  }
+
+  void _useOfficial() {
+    Credentials.useBuiltIn();
+    _activate(TdLibServiceImpl());
+  }
+
+  void _useCustom() {
+    final id = int.tryParse(_customId.text.trim());
+    if (id == null || id <= 0) {
+      setState(() => _error = 'api_id 必须是正整数');
+      return;
+    }
+    if (_customHash.text.trim().isEmpty) {
+      setState(() => _error = '请填写 api_hash');
+      return;
+    }
+    Credentials.setCustom(id, _customHash.text);
+    _activate(TdLibServiceImpl());
+  }
+
+  void _usePreview() => _activate(MockTdService());
 
   void _onAuth(AuthEvent e) {
     if (!mounted) return;
@@ -51,21 +101,21 @@ class _LoginScreenState extends State<LoginScreen> {
     final v = _phone.text.trim();
     if (v.isEmpty) return;
     setState(() => _error = null);
-    await context.read<TdService>().setPhoneNumber(v);
+    await context.read<ServiceNotifier>().service.setPhoneNumber(v);
   }
 
   Future<void> _submitCode() async {
     final v = _code.text.trim();
     if (v.isEmpty) return;
     setState(() => _error = null);
-    await context.read<TdService>().submitCode(v);
+    await context.read<ServiceNotifier>().service.submitCode(v);
   }
 
   Future<void> _submitPassword() async {
     final v = _password.text.trim();
     if (v.isEmpty) return;
     setState(() => _error = null);
-    await context.read<TdService>().submitPassword(v);
+    await context.read<ServiceNotifier>().service.submitPassword(v);
   }
 
   @override
@@ -105,7 +155,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   .fadeIn(delay: 120.ms, duration: 300.ms)
                   .slideY(begin: 0.2, end: 0),
               const SizedBox(height: 36),
-              _buildStep(theme),
+              if (_choosing)
+                _buildChoice(theme)
+              else
+                _buildStep(theme),
               if (_error != null) ...[
                 const SizedBox(height: 14),
                 Text(
@@ -118,6 +171,79 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildChoice(ThemeData theme) {
+    if (_enteringCustom) {
+      return Column(
+        children: [
+          TextField(
+            controller: _customId,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(hintText: 'api_id（如 94575）'),
+          ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.2, end: 0),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _customHash,
+            decoration: const InputDecoration(hintText: 'api_hash'),
+          ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.2, end: 0),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: FilledButton(
+              onPressed: _useCustom,
+              style: FilledButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: const Text('使用我的凭据', style: TextStyle(fontSize: 16)),
+            ),
+          ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.2, end: 0),
+          TextButton(
+            onPressed: () => setState(() => _enteringCustom = false),
+            child: const Text('返回'),
+          ),
+        ],
+      );
+    }
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: FilledButton(
+            onPressed: _useOfficial,
+            style: FilledButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: const Text('使用官方凭据', style: TextStyle(fontSize: 16)),
+          ),
+        ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.2, end: 0),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: OutlinedButton(
+            onPressed: () => setState(() => _enteringCustom = true),
+            style: OutlinedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: const Text('自己输入凭据', style: TextStyle(fontSize: 16)),
+          ),
+        ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.2, end: 0),
+        const SizedBox(height: 12),
+        TextButton(
+          onPressed: _usePreview,
+          child: const Text('仅预览 UI（不登录）'),
+        ),
+      ],
     );
   }
 

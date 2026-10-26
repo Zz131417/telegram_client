@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/chat.dart';
 import '../models/message.dart';
+import '../services/service_notifier.dart';
 import '../services/td_service.dart';
 import '../widgets/message_bubble.dart';
 
@@ -26,7 +27,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   @override
   void initState() {
     super.initState();
-    final sv = context.read<TdService>();
+    final sv = context.read<ServiceNotifier>().service;
     _sub = sv.messageUpdates.listen(_onNewMessage);
     _load(sv);
   }
@@ -65,7 +66,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       _controller.clear();
     });
     _scrollToBottom();
-    context.read<TdService>().sendMessage(widget.chat.id, text);
+    context.read<ServiceNotifier>().service.sendMessage(widget.chat.id, text);
   }
 
   void _scrollToBottom() {

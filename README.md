@@ -25,7 +25,7 @@
 lib/
   main.dart                       手机端入口：注入 TdService + Provider + 主题
   wear_main.dart                  手表端入口（Wear OS companion，圆屏适配）
-  config/secrets.dart             你的 api_id / api_hash（占位，需填真实值）
+  config/credentials.dart         凭据来源（内置预设 + 登录时自填，不写死进仓库）
   theme/app_theme.dart            亮/暗主题 + ChatTheme 扩展
   routes/transitions.dart         自定义页面过渡 + 错峰列表动画
   models/                         数据模型（chat / message）
@@ -50,17 +50,16 @@ flutter run -t lib/wear_main.dart   # 手表端（需 Wear OS 模拟器/设备�
 
 ## 接入真实 Telegram（登录 + 收发）
 
-### 1. 申请凭据
-到 https://my.telegram.org/apps 创建应用，拿到 `api_id` / `api_hash`。
+登录页会先让你**选择凭据来源**，无需把 api_id / api_hash 写进源码或仓库：
 
-### 2. 填入凭据
-```bash
-cp lib/config/secrets_example.dart lib/config/secrets.dart
-# 编辑 secrets.dart，填入真实 api_id / api_hash
-```
-应用检测到已配置后会自动启用真实 `TdLibServiceImpl`。
+- **官方凭据**：使用仓库内置预设（已随包提供），点一下即可登录。
+  > 注意：内置预设是一组共享凭据，多人共用可能触发限流、被 Telegram 观察甚至封号；
+  > **强烈建议用自己的**（见下）。该预设值也已暴露在公开聊天记录中，不建议长期使用。
+- **自己输入**：在登录页填入你自己的 `api_id` / `api_hash`（推荐）。
+  到 https://my.telegram.org/apps 创建应用，约 2 分钟免费拿到。
+- **仅预览 UI**：不登录，直接走 Mock 数据预览完整界面与过渡动画。
 
-### 3. 放置原生 libtdjson（真实登录需要）
+### 放置原生 libtdjson（真实登录需要）
 `TdLibServiceImpl` 在运行时用 `DynamicLibrary.open` 加载官方原生库，各平台放置位置：
 
 | 平台 | 文件 | 放置位置 |
@@ -108,7 +107,7 @@ flutter run
   缺 namespace 无法编译，会拖垮所有 Android 构建，故改为纯 Flutter 实现。用手表侧载工具安装到
   Wear OS 4+ 设备即可。
 - **macOS 桌面 App 故意不构建**：独立 `.app` 需要 Apple 签名，故此处只出 iOS、不出 macOS。
-- 构建出的二进制含占位凭据，能编译运行；登录需在本地填真实 `api_id` / `apiHash`。
+- 构建出的二进制含内置预设凭据，能编译运行；登录时在界面选择「官方」或输入你自己的 `api_id` / `apiHash`。
 
 ## 关于接入实现
 `td_lib_service.dart` 直接用 `dart:ffi` 调用 libtdjson 的 JSON 接口（create/send/receive），

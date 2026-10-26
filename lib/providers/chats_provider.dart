@@ -13,6 +13,7 @@ class ChatsProvider extends ChangeNotifier {
   }
 
   final TdService _service;
+  TdService get service => _service;
   late final StreamSubscription<Message> _sub;
 
   List<Chat> _chats = const [];

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'config/secrets.dart';
 import 'theme/app_theme.dart';
 import 'providers/chats_provider.dart';
 import 'services/td_service.dart';
 import 'services/td_lib_service.dart';
+import 'services/service_notifier.dart';
 import 'screens/login_screen.dart';
 
 void main() => runApp(const MyApp());
@@ -14,16 +14,20 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 已配置凭据 -> 真实 TDLib 客户端；否则回退 Mock，UI 仍可预览。
-    final TdService service =
-        Secrets.isConfigured ? TdLibServiceImpl() : MockTdService();
+    // 默认提供 Mock 预览服务；登录界面在用户选择凭据后替换为真实 TDLib 客户端，
+    // 通过 ServiceNotifier 通知 ChatsProvider 重建。
+    final notifier = ServiceNotifier(MockTdService());
 
     return MultiProvider(
       providers: [
-        Provider<TdService>.value(value: service),
-        ChangeNotifierProxyProvider<TdService, ChatsProvider>(
-          create: (c) => ChatsProvider(c.read<TdService>()),
-          update: (_, s, p) => p ?? ChatsProvider(s),
+        ChangeNotifierProvider<ServiceNotifier>.value(value: notifier),
+        ChangeNotifierProxyProvider<ServiceNotifier, ChatsProvider>(
+          create: (c) => ChatsProvider(c.read<ServiceNotifier>().service),
+          update: (_, n, p) {
+            if (p != null && p.service == n.service) return p;
+            p?.dispose();
+            return ChatsProvider(n.service);
+          },
         ),
       ],
       child: MaterialApp(

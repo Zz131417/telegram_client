@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'td_native.dart';
 
-import '../config/secrets.dart';
+import '../config/credentials.dart';
 import '../models/chat.dart';
 import '../models/message.dart';
 import 'auth_state.dart';
@@ -17,17 +17,18 @@ import 'td_service.dart';
 /// 因此 UI 与 Provider 无需改动；若 TDLib 协议字段有出入，也只需微调本文件。
 class TdLibServiceImpl implements TdService {
   TdLibServiceImpl() {
-    // 构造函数里同步创建底层客户端并启动接收循环；任意一步失败都通过 authEvents
-    // 抛出错误，App 不会崩溃。
+    // 构造函数里同步创建底层客户端；失败仅记录，真正的错误在 init() 中发出，
+    // 因为登录界面会在创建后才订阅 authEvents。
     try {
       _client = FfiTdClient.create();
     } catch (e) {
       _client = null;
-      _auth.add(AuthEvent(AuthState.error, message: '加载 libtdjson 失败：$e'));
+      _loadError = '加载 libtdjson 失败：$e';
     }
   }
 
   FfiTdClient? _client;
+  String? _loadError;
   final _auth = StreamController<AuthEvent>.broadcast();
   final _messages = StreamController<Message>.broadcast();
   final Map<int, String> _chatTitles = {};
@@ -40,11 +41,15 @@ class TdLibServiceImpl implements TdService {
 
   @override
   Future<void> init() async {
+    if (_loadError != null) {
+      _auth.add(AuthEvent(AuthState.error, message: _loadError!));
+      return;
+    }
     if (_client == null) return; // 已在构造时记录错误
-    if (!Secrets.isConfigured) {
+    if (!Credentials.hasValue) {
       _auth.add(const AuthEvent(
         AuthState.error,
-        message: '未配置凭据：请在 lib/config/secrets.dart 填入 apiId / apiHash',
+        message: '未配置凭据：请在登录界面选择「官方」或输入自己的 api_id / apiHash',
       ));
       return;
     }
@@ -62,8 +67,8 @@ class TdLibServiceImpl implements TdService {
         'use_message_database': true,
         'use_chat_info_database': true,
         'use_secret_chats': false,
-        'api_id': Secrets.apiId,
-        'api_hash': Secrets.apiHash,
+        'api_id': Credentials.apiId,
+        'api_hash': Credentials.apiHash,
         'system_language_code': 'zh',
         'device_model': 'Flutter Client',
         'system_version': '1.0',
