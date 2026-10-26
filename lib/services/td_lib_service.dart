@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:path_provider/path_provider.dart';
+import '../core/logger.dart';
 import 'td_native.dart';
 
 import '../config/credentials.dart';
@@ -21,9 +22,11 @@ class TdLibServiceImpl implements TdService {
     // 因为登录界面会在创建后才订阅 authEvents。
     try {
       _client = FfiTdClient.create();
+      log.d('TDLib', 'FfiTdClient 创建成功');
     } catch (e) {
       _client = null;
       _loadError = '加载 libtdjson 失败：$e';
+      log.e('TDLib', '加载 libtdjson 失败', e);
     }
   }
 
@@ -42,17 +45,23 @@ class TdLibServiceImpl implements TdService {
   @override
   Future<void> init() async {
     if (_loadError != null) {
+      log.e('TDLib', 'init 中止：$_loadError');
       _auth.add(AuthEvent(AuthState.error, message: _loadError!));
       return;
     }
-    if (_client == null) return; // 已在构造时记录错误
+    if (_client == null) {
+      log.e('TDLib', 'init 中止：client 为 null');
+      return; // 已在构造时记录错误
+    }
     if (!Credentials.hasValue) {
+      log.e('TDLib', 'init 中止：未配置凭据');
       _auth.add(const AuthEvent(
         AuthState.error,
         message: '未配置凭据：请在登录界面选择「官方」或输入自己的 api_id / apiHash',
       ));
       return;
     }
+    log.i('TDLib', 'init: 启动接收循环并发送 setTdlibParameters (api_id=${Credentials.apiId})');
     _client!.start(_onEvent);
 
     final dir = await getApplicationSupportDirectory();
@@ -76,10 +85,12 @@ class TdLibServiceImpl implements TdService {
         'enable_storage_optimizer': true,
       },
     });
+    log.d('TDLib', 'setTdlibParameters 已发送');
   }
 
   @override
   Future<void> setPhoneNumber(String phoneNumber) async {
+    log.d('Auth', 'setPhoneNumber: ${_maskPhone(phoneNumber)}');
     await _client?.send({
       '@type': 'setAuthenticationPhoneNumber',
       'phone_number': phoneNumber,
@@ -88,6 +99,7 @@ class TdLibServiceImpl implements TdService {
 
   @override
   Future<void> submitCode(String code) async {
+    log.d('Auth', 'checkAuthenticationCode: <${code.length}位>');
     await _client?.send({'@type': 'checkAuthenticationCode', 'code': code});
   }
 
@@ -111,7 +123,9 @@ class TdLibServiceImpl implements TdService {
     });
     final ids = (res['chat_ids'] as List?)?.cast<int>() ?? const <int>[];
     final list = await Future.wait(ids.map(_toChat));
-    return list.whereType<Chat>().toList();
+    final chats = list.whereType<Chat>().toList();
+    log.i('TDLib', 'getChats -> 返回 ${chats.length} 个会话');
+    return chats;
   }
 
   @override
@@ -129,11 +143,13 @@ class TdLibServiceImpl implements TdService {
     });
     final items = (res['messages'] as List?) ?? const [];
     // TDLib 返回「从新到旧」，UI 需时间正序，故反转。
-    return items
+    final msgs = items
         .reversed
         .map(_toMessage)
         .whereType<Message>()
         .toList();
+    log.d('TDLib', 'getChatHistory chat=$chatId -> ${msgs.length} 条消息');
+    return msgs;
   }
 
   @override
@@ -148,6 +164,7 @@ class TdLibServiceImpl implements TdService {
         'text': {'@type': 'formattedText', 'text': text},
       },
     });
+    log.d('TDLib', 'sendMessage chat=$chatId');
     // 真实回执走 updateNewMessage，无需在此手动追加。
   }
 
@@ -163,11 +180,15 @@ class TdLibServiceImpl implements TdService {
 
   void _onEvent(Map<String, dynamic> msg) {
     final type = msg['@type'];
+    log.v('TDLib', 'update: $type');
     if (type == 'updateAuthorizationState') {
       _onAuthState(msg['authorization_state'] ?? const {});
     } else if (type == 'updateNewMessage') {
       final m = _toMessage(msg['message']);
-      if (m != null) _messages.add(m);
+      if (m != null) {
+        log.d('TDLib', 'updateNewMessage chat=${m.chatId}');
+        _messages.add(m);
+      }
     } else if (type == 'updateNewChat') {
       final chat = msg['chat'] ?? const {};
       final id = chat['id'];
@@ -177,6 +198,7 @@ class TdLibServiceImpl implements TdService {
 
   void _onAuthState(Map<String, dynamic> state) {
     final type = state['@type'];
+    log.i('Auth', '授权状态 -> $type');
     switch (type) {
       case 'authorizationStateWaitPhoneNumber':
         _auth.add(const AuthEvent(AuthState.waitPhoneNumber));
@@ -248,6 +270,12 @@ class TdLibServiceImpl implements TdService {
       default:
         return ChatType.private;
     }
+  }
+
+  /// 手机号脱敏：保留前 3 后 4，中间用 **** 代替（避免日志落盘泄露隐私）。
+  static String _maskPhone(String p) {
+    if (p.length <= 7) return p;
+    return '${p.substring(0, 3)}****${p.substring(p.length - 4)}';
   }
 
   static const _palette = [

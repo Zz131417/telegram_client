@@ -1,5 +1,10 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'core/logger.dart';
 import 'theme/app_theme.dart';
 import 'providers/chats_provider.dart';
 import 'services/td_service.dart';
@@ -7,7 +12,27 @@ import 'services/td_lib_service.dart';
 import 'services/service_notifier.dart';
 import 'screens/login_screen.dart';
 
-void main() => runApp(const MyApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 非 release 模式记更详细的日志；release 模式只留 info 及以上。
+  log.minLevel =
+      const bool.fromEnvironment('dart.vm.product') ? LogLevel.info : LogLevel.debug;
+
+  // 把日志同时写入应用私有目录下的文件（移动 / 桌面可用；Web 自动跳过）。
+  try {
+    final dir = await getApplicationSupportDirectory();
+    final file = File('${dir.path}/logs/app.log');
+    await file.parent.create(recursive: true);
+    await log.attachFile(file);
+  } catch (e) {
+    log.w('App', '无法挂载日志文件（忽略）: $e');
+  }
+
+  log.i('App', 'Telegram client 启动');
+
+  runApp(const MyApp());
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

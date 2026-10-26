@@ -6,6 +6,7 @@ import '../providers/chats_provider.dart';
 import '../routes/transitions.dart';
 import '../widgets/chat_list_tile.dart';
 import 'chat_detail_screen.dart';
+import 'logs_screen.dart';
 
 /// 聊天列表页：下拉刷新 + 错峰进场动画；点击用 SlidePageRoute 滑入详情。
 class ChatsScreen extends StatefulWidget {
@@ -35,7 +36,10 @@ class _ChatsScreenState extends State<ChatsScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.menu_outlined),
-            onPressed: () {},
+            tooltip: '日志',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LogsScreen()),
+            ),
           ),
         ],
       ),

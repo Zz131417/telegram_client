@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../config/credentials.dart';
+import '../core/logger.dart';
 import '../routes/transitions.dart';
 import '../services/auth_state.dart';
 import '../services/td_lib_service.dart';
@@ -58,6 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
   /// 选定凭据后激活对应服务：替换为真实 TDLib（或 Mock 预览），订阅事件并 init。
   void _activate(TdService svc) {
     _sub?.cancel();
+    log.i('Login', '激活服务: ${svc.runtimeType}');
     context.read<ServiceNotifier>().service = svc;
     _sub = svc.authEvents.listen(_onAuth);
     svc.init();
@@ -92,10 +94,12 @@ class _LoginScreenState extends State<LoginScreen> {
     final id = int.tryParse(_customId.text.trim());
     if (id == null || id <= 0) {
       setState(() => _error = 'api_id 必须是正整数');
+      log.w('Login', '自定义凭据校验失败: api_id 非法');
       return;
     }
     if (_customHash.text.trim().isEmpty) {
       setState(() => _error = '请填写 api_hash');
+      log.w('Login', '自定义凭据校验失败: api_hash 为空');
       return;
     }
     Credentials.setCustom(id, _customHash.text);
@@ -106,6 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _onAuth(AuthEvent e) {
     if (!mounted) return;
+    log.i('Login', '授权事件 -> ${e.state}${e.message != null ? ' (${e.message})' : ''}');
     setState(() {
       _step = e.state;
       _error = e.state == AuthState.error ? e.message : null;
@@ -123,6 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final v = _phone.text.trim();
     if (v.isEmpty) return;
     setState(() => _error = null);
+    log.d('Login', '提交手机号');
     await context.read<ServiceNotifier>().service.setPhoneNumber(v);
   }
 

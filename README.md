@@ -129,3 +129,22 @@ UI 与 Provider 完全不感知 TDLib。若 TDLib 协议字段有出入，只需
 ## 许可证
 
 [MIT](LICENSE)
+
+## 日志系统
+
+内置零依赖日志（`lib/core/logger.dart`），用于排障真实登录 / 收发问题：
+
+- **级别**：verbose / debug / info / warning / error；非 release 模式记 debug 及以上，release 模式记 info 及以上。
+- **输出**：控制台（`print`，仅非 release）+ 内存 ring buffer（保留最新 1000 条）+ 可选落盘文件。
+- **落盘**：app 启动后用 `path_provider` 把日志写入应用私有目录
+  `<应用数据>/logs/app.log`（超过 1MB 自动截断）。可在「聊天列表 → 右上角菜单 → 日志」页查看。
+- **查看 / 导出**：日志页支持复制全部（剪贴板）、清空内存记录、刷新；并展示落盘文件路径。
+- **隐私**：手机号在日志中脱敏（保留前 3 后 4，中间 `****`），避免明文泄露。
+
+用法：
+
+```dart
+import 'core/logger.dart';
+log.d('TDLib', 'client created');
+log.e('Auth', 'login failed', e, stack);
+```
