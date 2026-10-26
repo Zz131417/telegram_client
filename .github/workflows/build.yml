@@ -1,18 +1,21 @@
 # Build the client on GitHub Actions workers.
 #
 # Targets:
-#   - Android  (arm64-v8a / armeabi-v7a / x86_64) -> per-ABI APKs
+#   - Android  (arm64-v8a / armeabi-v7a / x86_64) -> per-ABI APKs  [bundles libtdjson]
 #   - Linux    (x64 only — Flutter's official Linux SDK is x86-64; arm64 Linux
 #               is not published by Flutter, so it cannot be built from the
-#               official SDK on CI)                       -> portable tar.gz
-#   - Windows  (x64)                               -> zip bundle
+#               official SDK on CI)                       -> portable tar.gz [bundles libtdjson]
+#   - Windows  (x64)                               -> zip bundle            [bundles libtdjson]
 #   - iOS      (simulator, debug, unsigned)         -> Runner.app for simulator
 #   - iOS IPA  (real device, UNSIGNED)            -> .ipa   [no Apple secrets]
-#   - Wear OS  (arm64)                            -> APK    [watch companion]
+#   - Wear OS  (arm64)                            -> APK    [bundles libtdjson]
 #
-# Native libtdjson is loaded at *runtime* via dart:ffi and is NOT required to
-# compile, so the builds below succeed without placing any native library. Real
-# Telegram login only needs libtdjson on the end user's machine (see README).
+# Real Telegram login: the native libtdjson is bundled into Android / Linux /
+# Windows / Wear OS builds, so those packages can log in out of the box. iOS
+# (unsigned, sideload-only) needs libtdjson.dylib added manually (see README).
+#
+# Caching: pub packages (~/.pub-cache via PUB_CACHE) and Gradle (~/.gradle) are
+# restored across runs so we don't re-download everything on every push.
 #
 # Secrets: none required. The iOS IPA is built unsigned (no Apple cert needed);
 #          sideload it via AltStore/Sideloadly/ESign which re-sign on install.
@@ -30,6 +33,9 @@ concurrency:
 
 permissions:
   contents: read
+
+env:
+  PUB_CACHE: ${{ github.workspace }}/.pub-cache
 
 jobs:
   # ----------------------------------------------------------------- Android
@@ -56,8 +62,34 @@ jobs:
         with:
           channel: stable
           cache: true
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: gradle-${{ runner.os }}-
+      - name: Cache pub packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PUB_CACHE }}
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
       - name: Generate platform host folders (android/linux/windows)
         run: flutter create --platforms=linux,windows,android .
+      - name: Download libtdjson (Android)
+        run: |
+          curl -L -o /tmp/jniLibs.tar.gz \
+            https://github.com/up9cloud/android-libtdjson/releases/download/v1.8.65/jniLibs.tar.gz
+          mkdir -p android/app/src/main
+          tar -xzf /tmp/jniLibs.tar.gz -C android/app/src/main/
+          # Normalize: some archives ship <abi>/… directly without a jniLibs/ wrapper.
+          if [ ! -d android/app/src/main/jniLibs ]; then
+            mkdir -p android/app/src/main/jniLibs
+            for d in arm64-v8a armeabi-v7a x86 x86_64; do
+              [ -d "android/app/src/main/$d" ] && mv "android/app/src/main/$d" android/app/src/main/jniLibs/
+            done
+          fi
+          echo "jniLibs contents:"; ls -R android/app/src/main/jniLibs
       - name: Flutter dependencies
         run: flutter pub get
       - name: Build ${{ matrix.abi }} APK
@@ -79,6 +111,12 @@ jobs:
         with:
           channel: stable
           cache: true
+      - name: Cache pub packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PUB_CACHE }}
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update
@@ -91,6 +129,12 @@ jobs:
         run: flutter pub get
       - name: Build Linux
         run: flutter build linux --release
+      - name: Download libtdjson (Linux)
+        run: |
+          npm pack prebuilt-tdlib@td-1.8.64
+          tar -xzf prebuilt-tdlib-*.tgz
+          cp package/prebuilds/tdlib-linux-x64/libtdjson.so \
+            build/linux/x64/release/bundle/
       - name: Package bundle
         run: |
           bundle="build/linux/x64/release/bundle"
@@ -112,6 +156,12 @@ jobs:
         with:
           channel: stable
           cache: true
+      - name: Cache pub packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PUB_CACHE }}
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
       - name: Generate platform host folders (android/linux/windows)
         shell: bash
         run: flutter create --platforms=linux,windows,android .
@@ -120,6 +170,13 @@ jobs:
         run: flutter pub get
       - name: Build Windows
         run: flutter build windows --release
+      - name: Download libtdjson (Windows)
+        shell: bash
+        run: |
+          npm pack prebuilt-tdlib@td-1.8.64
+          tar -xzf prebuilt-tdlib-*.tgz
+          cp package/prebuilds/tdlib-win32-x64/tdjson.dll \
+            build/windows/x64/runner/Release/
       - name: Package bundle
         shell: pwsh
         run: |
@@ -142,12 +199,19 @@ jobs:
         with:
           channel: stable
           cache: true
+      - name: Cache pub packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PUB_CACHE }}
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
       - name: Generate iOS host folder
         run: flutter create --platforms=ios .
       - name: Flutter dependencies
         run: flutter pub get
       # Simulator builds only support debug mode (JIT); release/profile are
       # rejected by Flutter for the simulator target. Debug needs no signing.
+      # Real login needs libtdjson.dylib (simulator build); not bundled here.
       - name: Build iOS (simulator, debug, unsigned)
         run: flutter build ios --simulator --debug
       - name: Upload artifact
@@ -162,6 +226,7 @@ jobs:
   # No Apple secrets needed — the .ipa is unsigned and can be sideloaded via
   # AltStore / Sideloadly / ESign (those tools re-sign on install). It will NOT
   # install on a stock, non-jailbroken device directly (iOS requires a signature).
+  # iOS device login needs libtdjson.dylib added to the app (see README).
   ios-ipa:
     name: iOS IPA (unsigned)
     runs-on: macos-15
@@ -171,6 +236,12 @@ jobs:
         with:
           channel: stable
           cache: true
+      - name: Cache pub packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PUB_CACHE }}
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
       - name: Generate iOS host folder
         run: flutter create --platforms=ios .
       - name: Flutter dependencies
@@ -200,7 +271,6 @@ jobs:
   # Standalone Wear OS companion. We declare the watch hardware feature in the
   # manifest (required=false so phones can still install) and bump minSdk to 30
   # (Wear OS 4/5), then build an arm64 APK from the watch-specific entry point.
-  # The `wear` package also injects the standalone meta-data via manifest merging.
   wear:
     name: Wear OS (arm64)
     runs-on: ubuntu-latest
@@ -214,6 +284,18 @@ jobs:
         with:
           channel: stable
           cache: true
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: gradle-${{ runner.os }}-
+      - name: Cache pub packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PUB_CACHE }}
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
       - name: Generate Android host
         run: flutter create --platforms=android .
       - name: Configure Wear OS manifest + minSdk
@@ -221,6 +303,19 @@ jobs:
           sed -i 's|<application|<uses-feature android:name="android.hardware.type.watch" android:required="false" />\n    <application|' android/app/src/main/AndroidManifest.xml
           sed -i 's|</application>|    <meta-data android:name="com.google.android.wearable.standalone" android:value="true" />\n</application>|' android/app/src/main/AndroidManifest.xml
           sed -i 's/minSdk = 21/minSdk = 30/; s/minSdkVersion 21/minSdkVersion 30/' android/app/build.gradle.kts
+      - name: Download libtdjson (Android)
+        run: |
+          curl -L -o /tmp/jniLibs.tar.gz \
+            https://github.com/up9cloud/android-libtdjson/releases/download/v1.8.65/jniLibs.tar.gz
+          mkdir -p android/app/src/main
+          tar -xzf /tmp/jniLibs.tar.gz -C android/app/src/main/
+          if [ ! -d android/app/src/main/jniLibs ]; then
+            mkdir -p android/app/src/main/jniLibs
+            for d in arm64-v8a armeabi-v7a x86 x86_64; do
+              [ -d "android/app/src/main/$d" ] && mv "android/app/src/main/$d" android/app/src/main/jniLibs/
+            done
+          fi
+          echo "jniLibs contents:"; ls -R android/app/src/main/jniLibs
       - name: Flutter dependencies
         run: flutter pub get
       - name: Build Wear OS APK (arm64)

@@ -4,7 +4,8 @@
 基于官方开源的 [TDLib](https://core.telegram.org/tdlib)（Telegram Database Library），
 通过 `dart:ffi` 直接绑定官方 [`libtdjson`](https://core.telegram.org/tdlib) 的 JSON 接口，
 不依赖任何第三方 TDLib Dart 封装，因此各平台 `flutter pub get` 与编译都干净通过；
-原生库在运行时按需加载（找不到时 App 不会崩溃，仅真实登录不可用）。
+原生库在运行时按需加载；CI 构建的 Android / Linux / Windows / Wear OS 已自带该库，
+可直接真实登录，找不到时 App 不会崩溃（仅真实登录不可用，走 Mock 预览）。
 
 > 本项目为个人/学习用途的非官方客户端。使用需遵守 Telegram 服务条款与 API 限制。
 
@@ -63,19 +64,24 @@ flutter run -t lib/wear_main.dart   # 手表端（需 Wear OS 模拟器/设备�
   到 https://my.telegram.org/apps 创建应用，约 2 分钟免费拿到。
 - **仅预览 UI**：不登录，直接走 Mock 数据预览完整界面与过渡动画。
 
-### 放置原生 libtdjson（真实登录需要）
-`TdLibServiceImpl` 在运行时用 `DynamicLibrary.open` 加载官方原生库，各平台放置位置：
+### 原生 libtdjson（真实登录需要）
+`TdLibServiceImpl` 在运行时用 `DynamicLibrary.open` 加载官方原生库。**CI 已自动把库打进包里**，
+因此从 Actions 下载的 **Android / Linux / Windows / Wear OS** 产物开箱即可真实登录：
 
-| 平台 | 文件 | 放置位置 |
-|------|------|----------|
-| Android | `libtdjson.so` | `android/app/src/main/jniLibs/<abi>/`（armeabi-v7a, arm64-v8a, x86_64） |
-| iOS | `libtdjson.dylib` | 链接进 Runner（Xcode Frameworks） |
-| macOS | `libtdjson.dylib` | `macos/Runner/Frameworks/` 或 app 包内 |
-| Windows | `tdjson.dll` + 依赖 | 与 `.exe` 同级目录 |
-| Linux | `libtdjson.so` | 与可执行文件同级，或系统 lib 路径 |
+| 平台 | 文件 | CI 是否自带 | 本地自行构建时的放置位置 |
+|------|------|-------------|--------------------------|
+| Android | `libtdjson.so` | ✅ 自带（up9cloud 预编译 v1.8.65） | `android/app/src/main/jniLibs/<abi>/` |
+| Wear OS | `libtdjson.so` | ✅ 同上（arm64-v8a） | 同上 |
+| Linux | `libtdjson.so` | ✅ 自带（prebuilt-tdlib） | 与可执行文件同级目录 |
+| Windows | `tdjson.dll` | ✅ 自带（prebuilt-tdlib，已静态链接 OpenSSL/zlib） | 与 `.exe` 同级目录 |
+| iOS | `libtdjson.dylib` | ⚠️ 需手动 | 放进 `Runner.app/Frameworks` 并 Embed & Sign（见下） |
 
-未放置时 App 仍可启动并预览界面（走 Mock），只是真实登录会提示「加载 libtdjson 失败」。
-预编译库可从官方 TDLib 的 GitHub Release 或社区预编译包获取。
+- **iOS（模拟器 / 未签名 IPA）**：CI 暂未打包 dylib。真机登录需在本地把为 iOS device
+  编译的 `libtdjson.dylib` 加入 `Runner.app/Frameworks` 并设为 Embed & Sign；未签名包经
+  AltStore / Sideloadly / ESign 侧载时会一并重签。
+- 本地 `flutter run` 没放库也能启动并走 Mock 预览；真实登录会提示「加载 libtdjson 失败」。
+  预编译库来源：Android/Wear → [up9cloud/android-libtdjson](https://github.com/up9cloud/android-libtdjson)，
+  Linux/Windows → npm 包 `prebuilt-tdlib`（静态链接，无需额外依赖）。
 
 ### 4. 运行
 ```bash
@@ -89,6 +95,7 @@ flutter run
 
 `.github/workflows/build.yml` 在 GitHub Actions 上构建
 **Android / Linux(x64) / Windows / iOS(模拟器) / iOS 未签名 IPA / Wear OS(arm64)**。
+真实登录用的 `libtdjson` 已随 Android / Linux / Windows / Wear OS 包自带；iOS 需手动加 dylib。
 工作流在构建前会自动执行 `flutter create --platforms=...` 生成对应宿主工程，
 因此仓库无需提交庞大的平台文件夹，fork 后开箱即跑。
 

@@ -38,18 +38,25 @@ class FfiTdClient {
   int _extraSeq = 0;
 
   /// 按平台加载原生 libtdjson。
+  ///
+  /// 策略：非 Android 平台先尝试从「可执行文件所在目录」加载（让自带原生库的
+  /// 桌面/移动自包含包直接可用），失败再回退到系统默认搜索。Android 直接按名
+  /// 加载即可（APK 的 lib/<abi>/ 会被自动加入搜索路径）。
   static DynamicLibrary loadLibrary() {
-    if (Platform.isAndroid || Platform.isLinux) {
-      return DynamicLibrary.open('libtdjson.so');
-    } else if (Platform.isWindows) {
-      return DynamicLibrary.open('tdjson.dll');
-    } else if (Platform.isMacOS) {
-      return DynamicLibrary.open('libtdjson.dylib');
-    } else if (Platform.isIOS) {
-      // iOS 把 libtdjson 链接进主二进制，用 process() 取符号。
-      return DynamicLibrary.process();
+    final name = Platform.isWindows
+        ? 'tdjson.dll'
+        : Platform.isIOS || Platform.isMacOS
+            ? 'libtdjson.dylib'
+            : 'libtdjson.so';
+    if (Platform.isAndroid) {
+      return DynamicLibrary.open(name);
     }
-    throw UnsupportedError('TDLib 不支持当前平台');
+    try {
+      final dir = File(Platform.resolvedExecutable).parent.path;
+      return DynamicLibrary.open('$dir/$name');
+    } catch (_) {
+      return DynamicLibrary.open(name);
+    }
   }
 
   /// 创建客户端并绑定 C 函数。
@@ -61,9 +68,8 @@ class FfiTdClient {
         lib.lookupFunction<_ReceiveNative, _Receive>('td_json_client_receive');
     client._destroy =
         lib.lookupFunction<_DestroyNative, _Destroy>('td_json_client_destroy');
-    final create = lib.lookupFunction<_CreateNative, _Create>(
-      'td_json_client_create',
-    );
+    final create =
+        lib.lookupFunction<_CreateNative, _Create>('td_json_client_create');
     client._client = create();
     return client;
   }
@@ -87,7 +93,10 @@ class FfiTdClient {
     }
   }
 
-  void _dispatch(Map<String, dynamic> msg, Function(Map<String, dynamic>) onUpdate) {
+  void _dispatch(
+    Map<String, dynamic> msg,
+    Function(Map<String, dynamic>) onUpdate,
+  ) {
     final extra = msg['@extra'];
     if (extra is String && _pending.containsKey(extra)) {
       _pending.remove(extra)!.complete(msg);
