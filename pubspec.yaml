@@ -16,6 +16,8 @@ dependencies:
   path_provider: ^2.1.2
   collection: ^1.18.0
   ffi: ^2.1.3
+  # Wear OS support: WatchShape detects round/square watch faces (needs minSdk >= 23).
+  wear: ^1.1.0
 
 dev_dependencies:
   flutter_test:

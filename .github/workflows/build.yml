@@ -8,6 +8,7 @@
 #   - Windows  (x64)                               -> zip bundle
 #   - iOS      (simulator, debug, unsigned)         -> Runner.app for simulator
 #   - iOS IPA  (real device, UNSIGNED)            -> .ipa   [no Apple secrets]
+#   - Wear OS  (arm64)                            -> APK    [watch companion]
 #
 # Native libtdjson is loaded at *runtime* via dart:ffi and is NOT required to
 # compile, so the builds below succeed without placing any native library. Real
@@ -156,7 +157,7 @@ jobs:
           path: build/ios/iphonesimulator/Runner.app
           if-no-files-found: error
 
-    # ----------------------------------------------------------------- iOS IPA (UNSIGNED)
+  # ----------------------------------------------------------------- iOS IPA (UNSIGNED)
   # Builds for a real device WITHOUT signing, then packages the .app into an .ipa.
   # No Apple secrets needed — the .ipa is unsigned and can be sideloaded via
   # AltStore / Sideloadly / ESign (those tools re-sign on install). It will NOT
@@ -193,4 +194,40 @@ jobs:
         with:
           name: ios-ipa-unsigned
           path: telegram_client-unsigned.ipa
+          if-no-files-found: error
+
+  # ----------------------------------------------------------------- Wear OS (arm64)
+  # Standalone Wear OS companion. We declare the watch hardware feature in the
+  # manifest (required=false so phones can still install) and bump minSdk to 30
+  # (Wear OS 4/5), then build an arm64 APK from the watch-specific entry point.
+  # The `wear` package also injects the standalone meta-data via manifest merging.
+  wear:
+    name: Wear OS (arm64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate Android host
+        run: flutter create --platforms=android .
+      - name: Configure Wear OS manifest + minSdk
+        run: |
+          sed -i 's|<application|<uses-feature android:name="android.hardware.type.watch" android:required="false" />\n    <application|' android/app/src/main/AndroidManifest.xml
+          sed -i 's|</application>|    <meta-data android:name="com.google.android.wearable.standalone" android:value="true" />\n</application>|' android/app/src/main/AndroidManifest.xml
+          sed -i 's/minSdk = 21/minSdk = 30/; s/minSdkVersion 21/minSdkVersion 30/' android/app/build.gradle
+      - name: Flutter dependencies
+        run: flutter pub get
+      - name: Build Wear OS APK (arm64)
+        run: flutter build apk --release --target-platform android-arm64 -t lib/wear_main.dart
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: wearos-arm64
+          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           if-no-files-found: error
