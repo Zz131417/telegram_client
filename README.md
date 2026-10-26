@@ -118,7 +118,7 @@ flutter run
   安全内边距），不依赖第三方 Wear 包——`wear` 包的 Android 模块在 Flutter 3.44 的 AGP 8 下因
   缺 namespace 无法编译，会拖垮所有 Android 构建，故改为纯 Flutter 实现。用手表侧载工具安装到
   Wear OS 4+ 设备即可。
-- **macOS 桌面 App 故意不构建**：独立 `.app` 需要 Apple 签名，故此处只出 iOS、不出 macOS。
+- **macOS 桌面 App 不构建，请自己fork构建。
 - 构建出的二进制含内置预设凭据，能编译运行；登录时在界面选择「官方」或输入你自己的 `api_id` / `apiHash`。
 
 ## 关于接入实现
