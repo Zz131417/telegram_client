@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'models/chat.dart';
-import 'services/mock_data.dart';
+import 'services/td_service.dart';
 import 'theme/app_theme.dart';
 
 /// Wear OS 入口：手表 companion 界面（展示最近会话）。
