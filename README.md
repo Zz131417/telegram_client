@@ -4,8 +4,8 @@
 基于官方开源的 [TDLib](https://core.telegram.org/tdlib)（Telegram Database Library），
 通过 `dart:ffi` 直接绑定官方 [`libtdjson`](https://core.telegram.org/tdlib) 的 JSON 接口，
 不依赖任何第三方 TDLib Dart 封装，因此各平台 `flutter pub get` 与编译都干净通过；
-原生库在运行时按需加载；CI 构建的 Android / Linux / Windows / Wear OS 已自带该库，
-可直接真实登录，找不到时 App 不会崩溃（仅真实登录不可用，走 Mock 预览）。
+原生库在运行时按需加载；CI 构建的 Android / Linux / Windows / Wear OS / **iOS（模拟器 + 未签名 IPA）**
+都已自带该库，可直接真实登录，找不到时 App 不会崩溃（仅真实登录不可用，走 Mock 预览）。
 
 > 本项目为个人/学习用途的非官方客户端。使用需遵守 Telegram 服务条款与 API 限制。
 
@@ -74,11 +74,12 @@ flutter run -t lib/wear_main.dart   # 手表端（需 Wear OS 模拟器/设备�
 | Wear OS | `libtdjson.so` | ✅ 同上（arm64-v8a） | 同上 |
 | Linux | `libtdjson.so` | ✅ 自带（prebuilt-tdlib） | 与可执行文件同级目录 |
 | Windows | `tdjson.dll` | ✅ 自带（prebuilt-tdlib，已静态链接 OpenSSL/zlib） | 与 `.exe` 同级目录 |
-| iOS | `libtdjson.dylib` | ⚠️ 需手动 | 放进 `Runner.app/Frameworks` 并 Embed & Sign（见下） |
+| iOS | `libtdjson.dylib` | ✅ 自带（up9cloud ios-libtdjson v1.8.65，已设 @rpath 并重签） | 未签名 IPA 经 AltStore/Sideloadly/ESign 侧载时一并重签 |
 
-- **iOS（模拟器 / 未签名 IPA）**：CI 暂未打包 dylib。真机登录需在本地把为 iOS device
-  编译的 `libtdjson.dylib` 加入 `Runner.app/Frameworks` 并设为 Embed & Sign；未签名包经
-  AltStore / Sideloadly / ESign 侧载时会一并重签。
+- **iOS（模拟器 / 未签名 IPA）**：CI 已自动从 [up9cloud/ios-libtdjson](https://github.com/up9cloud/ios-libtdjson)
+  (TDLib v1.8.65) 取对应平台的 `libtdjson.dylib`，放进 `Runner.app/Frameworks/`、设 `@rpath`
+  安装名并 ad-hoc 重签。真机 IPA 经 AltStore / Sideloadly / ESign 侧载时会对整个 bundle
+  （含该 dylib）重新签名，登录即可用。
 - 本地 `flutter run` 没放库也能启动并走 Mock 预览；真实登录会提示「加载 libtdjson 失败」。
   预编译库来源：Android/Wear → [up9cloud/android-libtdjson](https://github.com/up9cloud/android-libtdjson)，
   Linux/Windows → [AlexXanderGrib/prebuilt-tdlib](https://github.com/AlexXanderGrib/prebuilt-tdlib)（静态链接，无需额外依赖）。
@@ -95,7 +96,7 @@ flutter run
 
 `.github/workflows/build.yml` 在 GitHub Actions 上构建
 **Android / Linux(x64) / Windows / iOS(模拟器) / iOS 未签名 IPA / Wear OS(arm64)**。
-真实登录用的 `libtdjson` 已随 Android / Linux / Windows / Wear OS 包自带；iOS 需手动加 dylib。
+真实登录用的 `libtdjson` 已随所有平台包自带（含 iOS 模拟器与未签名 IPA）。
 工作流在构建前会自动执行 `flutter create --platforms=...` 生成对应宿主工程，
 因此仓库无需提交庞大的平台文件夹，fork 后开箱即跑。
 

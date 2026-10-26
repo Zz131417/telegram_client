@@ -10,9 +10,10 @@
 #   - iOS IPA  (real device, UNSIGNED)            -> .ipa   [no Apple secrets]
 #   - Wear OS  (arm64)                            -> APK    [bundles libtdjson]
 #
-# Real Telegram login: the native libtdjson is bundled into Android / Linux /
-# Windows / Wear OS builds, so those packages can log in out of the box. iOS
-# (unsigned, sideload-only) needs libtdjson.dylib added manually (see README).
+# Real Telegram login: the native libtdjson is bundled into ALL builds
+# (Android / Linux / Windows / Wear OS / iOS sim / iOS device IPA), so every
+# package can log in out of the box. The unsigned iOS IPA must be sideloaded
+# via AltStore / Sideloadly / ESign (which re-sign the bundle + embedded dylib).
 #
 # Caching: pub packages (~/.pub-cache via PUB_CACHE) and Gradle (~/.gradle) are
 # restored across runs so we don't re-download everything on every push.
@@ -209,9 +210,19 @@ jobs:
         run: flutter pub get
       # Simulator builds only support debug mode (JIT); release/profile are
       # rejected by Flutter for the simulator target. Debug needs no signing.
-      # Real login needs libtdjson.dylib (simulator build); not bundled here.
       - name: Build iOS (simulator, debug, unsigned)
         run: flutter build ios --simulator --debug
+      - name: Download & embed libtdjson (iOS simulator)
+        run: |
+          curl -L --retry 3 -o /tmp/xc.tar.gz             https://github.com/up9cloud/ios-libtdjson/releases/download/v1.8.65/libtdjson.xcframework.tar.gz
+          rm -rf /tmp/xc && mkdir -p /tmp/xc && tar -xzf /tmp/xc.tar.gz -C /tmp/xc
+          DYLIB=$(find /tmp/xc -path '*simulator*/libtdjson.dylib' | head -n 1)
+          echo "sim dylib: $DYLIB"
+          [ -z "$DYLIB" ] && { echo "sim dylib not found"; exit 1; }
+          install_name_tool -id @rpath/libtdjson.dylib "$DYLIB"
+          mkdir -p build/ios/iphonesimulator/Runner.app/Frameworks
+          cp "$DYLIB" build/ios/iphonesimulator/Runner.app/Frameworks/
+          codesign --force --sign - --timestamp=none             build/ios/iphonesimulator/Runner.app/Frameworks/libtdjson.dylib
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
@@ -247,7 +258,19 @@ jobs:
       # Build for device with code signing disabled; produces an unsigned Runner.app.
       - name: Build iOS (device, unsigned)
         run: flutter build ios --release --no-codesign
-      # An .ipa is just a zip with a top-level Payload/ folder containing the .app.
+      - name: Download & embed libtdjson (iOS device)
+        run: |
+          curl -L --retry 3 -o /tmp/xc.tar.gz             https://github.com/up9cloud/ios-libtdjson/releases/download/v1.8.65/libtdjson.xcframework.tar.gz
+          rm -rf /tmp/xc && mkdir -p /tmp/xc && tar -xzf /tmp/xc.tar.gz -C /tmp/xc
+          DYLIB=$(find /tmp/xc -path '*ios-arm64/libtdjson.dylib' | head -n 1)
+          echo "device dylib: $DYLIB"
+          [ -z "$DYLIB" ] && { echo "device dylib not found"; exit 1; }
+          install_name_tool -id @rpath/libtdjson.dylib "$DYLIB"
+          mkdir -p build/ios/iphoneos/Runner.app/Frameworks
+          cp "$DYLIB" build/ios/iphoneos/Runner.app/Frameworks/
+          codesign --force --sign - --timestamp=none             build/ios/iphoneos/Runner.app/Frameworks/libtdjson.dylib
+      # An .ipa is just a zip with a top-level Payload/ folder containing the .app
+      # (which already embeds libtdjson.dylib in Frameworks/).
       - name: Package unsigned .ipa
         run: |
           cd build/ios
