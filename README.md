@@ -81,7 +81,7 @@ flutter run -t lib/wear_main.dart   # 手表端（需 Wear OS 模拟器/设备�
   AltStore / Sideloadly / ESign 侧载时会一并重签。
 - 本地 `flutter run` 没放库也能启动并走 Mock 预览；真实登录会提示「加载 libtdjson 失败」。
   预编译库来源：Android/Wear → [up9cloud/android-libtdjson](https://github.com/up9cloud/android-libtdjson)，
-  Linux/Windows → npm 包 `prebuilt-tdlib`（静态链接，无需额外依赖）。
+  Linux/Windows → [AlexXanderGrib/prebuilt-tdlib](https://github.com/AlexXanderGrib/prebuilt-tdlib)（静态链接，无需额外依赖）。
 
 ### 4. 运行
 ```bash

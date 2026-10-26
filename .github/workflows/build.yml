@@ -131,10 +131,9 @@ jobs:
         run: flutter build linux --release
       - name: Download libtdjson (Linux)
         run: |
-          npm pack prebuilt-tdlib@td-1.8.64
-          tar -xzf prebuilt-tdlib-*.tgz
-          cp package/prebuilds/tdlib-linux-x64/libtdjson.so \
-            build/linux/x64/release/bundle/
+          # Prebuilt, statically-linked libtdjson from AlexXanderGrib/prebuilt-tdlib (TDLib 1.8.67).
+          curl -L -o build/linux/x64/release/bundle/libtdjson.so \
+            https://github.com/AlexXanderGrib/prebuilt-tdlib/releases/download/0.1.8.67-42e6a52/libtdjson-x64-glibc.so
       - name: Package bundle
         run: |
           bundle="build/linux/x64/release/bundle"
@@ -173,10 +172,9 @@ jobs:
       - name: Download libtdjson (Windows)
         shell: bash
         run: |
-          npm pack prebuilt-tdlib@td-1.8.64
-          tar -xzf prebuilt-tdlib-*.tgz
-          cp package/prebuilds/tdlib-win32-x64/tdjson.dll \
-            build/windows/x64/runner/Release/
+          # Prebuilt, statically-linked tdjson from AlexXanderGrib/prebuilt-tdlib (TDLib 1.8.67).
+          curl -L -o build/windows/x64/runner/Release/tdjson.dll \
+            https://github.com/AlexXanderGrib/prebuilt-tdlib/releases/download/0.1.8.67-42e6a52/tdjson-x64.dll
       - name: Package bundle
         shell: pwsh
         run: |
