@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
@@ -14,8 +15,10 @@ import 'chats_screen.dart';
 /// 登录页（真实接入）：先让用户选择凭据来源，再按 TDLib 授权状态机切换步骤
 /// 手机号 → 验证码 → 两步密码 → 就绪。
 ///
-/// 凭据来源：
-///  - 官方：使用仓库内置预设凭据（Credentials.builtIn*）。
+/// 凭据来源（按运行平台预置不同官方/关联凭据，均可在 my.telegram.org 自查）：
+///  - Android      → 官方 Telegram Android   (api_id 4)
+///  - 桌面端       → 官方 Telegram Desktop   (api_id 2040)
+///  - iOS          → 在 官方 Telegram Android(4) 与 Telegram X(21724) 间选择
 ///  - 自己输入：用户填入自己的 api_id / api_hash（推荐，避免共用一组导致限流/封号）。
 ///  - 仅预览：不登录，直接走 Mock 数据预览完整 UI 与过渡动画。
 class LoginScreen extends StatefulWidget {
@@ -61,8 +64,27 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mounted) setState(() => _choosing = false);
   }
 
-  void _useOfficial() {
-    Credentials.useBuiltIn();
+  bool get _isIOS => defaultTargetPlatform == TargetPlatform.iOS;
+
+  /// 非 iOS 平台：按平台自动选官方预设（Android→4，桌面→2040）。
+  void _useOfficialAuto() {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      Credentials.useAndroid();
+    } else {
+      Credentials.useDesktop();
+    }
+    _activate(TdLibServiceImpl());
+  }
+
+  /// iOS：官方 Telegram Android (4)。
+  void _useOfficialAndroid() {
+    Credentials.useAndroid();
+    _activate(TdLibServiceImpl());
+  }
+
+  /// iOS：官方 Telegram X (21724)。
+  void _useOfficialIosX() {
+    Credentials.useIosX();
     _activate(TdLibServiceImpl());
   }
 
@@ -209,21 +231,15 @@ class _LoginScreenState extends State<LoginScreen> {
         ],
       );
     }
+    final ios = _isIOS;
     return Column(
       children: [
-        SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: FilledButton(
-            onPressed: _useOfficial,
-            style: FilledButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: const Text('使用官方凭据', style: TextStyle(fontSize: 16)),
-          ),
-        ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.2, end: 0),
+        if (ios) ...[
+          _officialButton(theme, '官方凭据 · Android (4)', _useOfficialAndroid),
+          const SizedBox(height: 12),
+          _officialButton(theme, '官方凭据 · Telegram X (21724)', _useOfficialIosX),
+        ] else
+          _officialButton(theme, _officialLabel(), _useOfficialAuto),
         const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
@@ -245,6 +261,30 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ],
     );
+  }
+
+  /// 非 iOS 官方按钮文案：随平台显示对应客户端与 api_id。
+  String _officialLabel() {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return '官方凭据 · Telegram Android (4)';
+    }
+    return '官方凭据 · Telegram Desktop (2040)';
+  }
+
+  Widget _officialButton(ThemeData theme, String label, VoidCallback onPressed) {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: FilledButton(
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        child: Text(label, style: const TextStyle(fontSize: 16)),
+      ),
+    ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.2, end: 0);
   }
 
   Widget _buildStep(ThemeData theme) {
