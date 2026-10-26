@@ -102,8 +102,11 @@ flutter run
   - 模拟器版（`.app`）和真机未签名 `.ipa` 是两个独立产物，按需取用。
 - **Wear OS（arm64）**：`build.yml` 的 `wear` job 单独生成 Android 宿主，在 manifest 中
   声明手表硬件特性（`required=false`，手机也能装）并把 `minSdk` 提到 30（Wear OS 4/5），
-  再用 `flutter build apk --target-platform android-arm64 -t lib/wear_main.dart` 出
-  `wearos-arm64.apk`。用手表侧载工具安装到 Wear OS 4+ 设备即可。
+  再用 `flutter build apk --split-per-abi --target-platform android-arm64 -t lib/wear_main.dart`
+  出 `wearos-arm64.apk`。`lib/wear_main.dart` 用纯 Flutter 适配小表盘（按屏幕短边判手表、给圆屏
+  安全内边距），不依赖第三方 Wear 包——`wear` 包的 Android 模块在 Flutter 3.44 的 AGP 8 下因
+  缺 namespace 无法编译，会拖垮所有 Android 构建，故改为纯 Flutter 实现。用手表侧载工具安装到
+  Wear OS 4+ 设备即可。
 - **macOS 桌面 App 故意不构建**：独立 `.app` 需要 Apple 签名，故此处只出 iOS、不出 macOS。
 - 构建出的二进制含占位凭据，能编译运行；登录需在本地填真实 `api_id` / `apiHash`。
 

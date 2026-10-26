@@ -220,11 +220,11 @@ jobs:
         run: |
           sed -i 's|<application|<uses-feature android:name="android.hardware.type.watch" android:required="false" />\n    <application|' android/app/src/main/AndroidManifest.xml
           sed -i 's|</application>|    <meta-data android:name="com.google.android.wearable.standalone" android:value="true" />\n</application>|' android/app/src/main/AndroidManifest.xml
-          sed -i 's/minSdk = 21/minSdk = 30/; s/minSdkVersion 21/minSdkVersion 30/' android/app/build.gradle
+          sed -i 's/minSdk = 21/minSdk = 30/; s/minSdkVersion 21/minSdkVersion 30/' android/app/build.gradle.kts
       - name: Flutter dependencies
         run: flutter pub get
       - name: Build Wear OS APK (arm64)
-        run: flutter build apk --release --target-platform android-arm64 -t lib/wear_main.dart
+        run: flutter build apk --release --split-per-abi --target-platform android-arm64 -t lib/wear_main.dart
       - name: Upload APK
         uses: actions/upload-artifact@v7
         with:
