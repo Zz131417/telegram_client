@@ -117,7 +117,7 @@ class _WearHomeState extends State<WearHome> {
         _loading = false;
       });
     } catch (e) {
-      log.w('Wear', 'loadChats 失败', e);
+      log.w('Wear', 'loadChats 失败: $e');
       if (mounted) setState(() => _loading = false);
     }
   }
