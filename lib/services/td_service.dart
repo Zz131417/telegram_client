@@ -46,6 +46,13 @@ abstract class TdService {
 
   /// 释放底层资源。
   Future<void> dispose();
+
+  /// 转发一条原始 TDLib 请求（JS 插件桥接用）。返回该请求的即时响应。
+  /// 具体结果通常还会以 update 形式经 [updates] 回流。
+  Future<Map<String, dynamic>> send(Map<String, dynamic> query);
+
+  /// 原始 TDLib update 流（JS 插件 `td.onUpdate` 用）。不解析、不过滤。
+  Stream<Map<String, dynamic>> get updates;
 }
 
 /// 默认实现：Mock 数据驱动，无需任何凭据即可预览完整 UI 与过渡动画。
@@ -54,6 +61,7 @@ abstract class TdService {
 class MockTdService implements TdService {
   final _auth = StreamController<AuthEvent>.broadcast();
   final _messages = StreamController<Message>.broadcast();
+  final _updates = StreamController<Map<String, dynamic>>.broadcast();
   ProxyConfig? _proxy;
 
   @override
@@ -118,8 +126,18 @@ class MockTdService implements TdService {
   }
 
   @override
+  Future<Map<String, dynamic>> send(Map<String, dynamic> query) async {
+    // Mock 仅回显，不做真实网络请求。
+    return {'@type': 'ok', 'echo': query};
+  }
+
+  @override
+  Stream<Map<String, dynamic>> get updates => _updates.stream;
+
+  @override
   Future<void> dispose() async {
     await _auth.close();
     await _messages.close();
+    await _updates.close();
   }
 }
