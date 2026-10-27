@@ -35,6 +35,7 @@ class TdLibServiceImpl implements TdService {
   FfiTdClient? _client;
   String? _loadError;
   int? _proxyId;
+  final _updateCtl = StreamController<Map<String, dynamic>>.broadcast();
   final _auth = StreamController<AuthEvent>.broadcast();
   final _messages = StreamController<Message>.broadcast();
   final Map<int, String> _chatTitles = {};
@@ -217,6 +218,22 @@ class TdLibServiceImpl implements TdService {
   }
 
   @override
+  Stream<Map<String, dynamic>> get updates => _updateCtl.stream;
+
+  @override
+  Future<Map<String, dynamic>> send(Map<String, dynamic> query) async {
+    if (_client == null) {
+      return {'@type': 'error', 'message': 'client 未就绪'};
+    }
+    try {
+      final res = await _client!.send(query);
+      return res ?? {'@type': 'ok'};
+    } catch (e) {
+      return {'@type': 'error', 'message': e.toString()};
+    }
+  }
+
+  @override
   Future<void> dispose() async {
     await _client?.send({'@type': 'logOut'});
     _client?.dispose();
@@ -228,6 +245,7 @@ class TdLibServiceImpl implements TdService {
 
   void _onEvent(Map<String, dynamic> msg) {
     final type = msg['@type'];
+    _updateCtl.add(msg);
     log.v('TDLib', 'update: $type');
     if (type == 'updateAuthorizationState') {
       _onAuthState(msg['authorization_state'] ?? const {});
