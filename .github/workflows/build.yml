@@ -275,6 +275,20 @@ jobs:
           install_name_tool -id @rpath/libtdjson.dylib "$DYLIB"
           mkdir -p build/ios/iphoneos/Runner.app/Frameworks
           cp "$DYLIB" build/ios/iphoneos/Runner.app/Frameworks/
+          # 自包含一份与编译时匹配的 iOS libc++，并把 libtdjson 对系统
+          # /usr/lib/libc++.1.dylib 的依赖改指向它，避免新 Xcode 编出的库引用了
+          # 旧系统 libc++ 里缺失的符号（__libcpp_verbose_abort）导致运行时 dlopen 失败。
+          TOOLCHAIN_LIB="$(xcode-select -p)/Toolchains/XcodeDefault.xctoolchain/usr/lib/iphoneos"
+          SYS_LIBCXX=$(find "$TOOLCHAIN_LIB" -maxdepth 1 \( -name 'libc++.1.dylib' -o -name 'libc++.dylib' \) 2>/dev/null | head -n 1)
+          BUNDLED="build/ios/iphoneos/Runner.app/Frameworks/libc++.1.dylib"
+          if [ -n "$SYS_LIBCXX" ]; then
+            cp "$SYS_LIBCXX" "$BUNDLED"
+            install_name_tool -change /usr/lib/libc++.1.dylib @rpath/libc++.1.dylib "$DYLIB"
+            codesign --force --sign - --timestamp=none "$BUNDLED"
+            echo "已打包自带 libc++: $SYS_LIBCXX"
+          else
+            echo "警告: 未找到 iOS 真机 libc++.dylib，旧系统可能仍报符号缺失 (__libcpp_verbose_abort)"
+          fi
           codesign --force --sign - --timestamp=none \
             build/ios/iphoneos/Runner.app/Frameworks/libtdjson.dylib
       # An .ipa is just a zip with a top-level Payload/ folder containing the .app
