@@ -26,7 +26,7 @@ class _ImportScreenState extends State<ImportScreen> {
   String _exportJson() => jsonEncode({
         'proxy': settings.proxy?.toJson(),
         'themeMode': settings.themeMode,
-        'plugins': plugins.registry
+        'plugins': PluginManager.registry
             .where((p) => plugins.isEnabled(p.id))
             .map((p) => p.id)
             .toList(),
@@ -53,7 +53,7 @@ class _ImportScreenState extends State<ImportScreen> {
       if (j.containsKey('plugins')) {
         final list =
             (j['plugins'] as List).map((e) => e.toString()).toSet();
-        for (final p in plugins.registry) {
+        for (final p in PluginManager.registry) {
           await plugins.setEnabled(p.id, list.contains(p.id));
         }
       }
