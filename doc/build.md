@@ -41,6 +41,9 @@ flutter run -t lib/wear_main.dart # 手表端（Wear OS）
 
 下载方式：仓库 **Actions** 页 → 最新构建 → 右侧 **Artifacts**。
 
+> 手动触发构建（Run workflow）会**自动发布 GitHub Release（测试版）**：构建完成后
+> 所有产物会被下载、重命名并打成一个 Release，版本默认 `0.1.0-r<运行序号>`。可在
+> Run workflow 时用 `version` 输入覆盖版本号，或把 `publish_release` 关掉只出包不发版。
 > 构建结果以仓库 Actions 页为准；`libtdjson` 具体版本与下载源统一维护在
 > [`.github/workflows/build.yml`](.github/workflows/build.yml)，升级 TDLib 时只改该文件即可。
 
