@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 import 'package:path_provider/path_provider.dart';
 import '../core/logger.dart';
+import '../core/settings_store.dart';
+import '../models/proxy_config.dart';
 import 'td_native.dart';
 
 import '../config/credentials.dart';
@@ -32,6 +34,7 @@ class TdLibServiceImpl implements TdService {
 
   FfiTdClient? _client;
   String? _loadError;
+  int? _proxyId;
   final _auth = StreamController<AuthEvent>.broadcast();
   final _messages = StreamController<Message>.broadcast();
   final Map<int, String> _chatTitles = {};
@@ -63,6 +66,10 @@ class TdLibServiceImpl implements TdService {
     }
     log.i('TDLib', 'init: 启动接收循环并发送 setTdlibParameters (api_id=${Credentials.apiId})');
     _client!.start(_onEvent);
+    // 若之前配置过代理，登录后自动下发。
+    if (settings.proxy != null) {
+      await setProxy(settings.proxy!);
+    }
 
     final dir = await getApplicationSupportDirectory();
     await _client!.send({
@@ -166,6 +173,47 @@ class TdLibServiceImpl implements TdService {
     });
     log.d('TDLib', 'sendMessage chat=$chatId');
     // 真实回执走 updateNewMessage，无需在此手动追加。
+  }
+
+  @override
+  Future<void> setProxy(ProxyConfig config) async {
+    if (_client == null) {
+      log.w('Proxy', 'setProxy 被调用但 client 未就绪');
+      return;
+    }
+    log.i('Proxy', '设置代理: ${config.typeLabel} ${config.server}:${config.port}');
+    final type = config.type == ProxyType.socks5
+        ? {
+            '@type': 'proxyTypeSocks5',
+            'username': config.username,
+            'password': config.password,
+          }
+        : {
+            '@type': 'proxyTypeMtproto',
+            'secret': config.password,
+          };
+    final res = await _client!.send({
+      '@type': 'addProxy',
+      'server': config.server,
+      'port': config.port,
+      'type': type,
+    });
+    final id = res['id'];
+    if (id is int) {
+      _proxyId = id;
+      await _client!.send({'@type': 'enableProxy', 'proxy_id': id});
+      log.i('Proxy', '代理已启用 id=$id');
+    } else {
+      log.e('Proxy', 'addProxy 返回异常: $res');
+    }
+  }
+
+  @override
+  Future<void> clearProxy() async {
+    if (_client == null || _proxyId == null) return;
+    await _client!.send({'@type': 'removeProxy', 'proxy_id': _proxyId});
+    _proxyId = null;
+    log.i('Proxy', '代理已移除');
   }
 
   @override
