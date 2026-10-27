@@ -1,4 +1,4 @@
-import '../core/logger.dart';
+import '../logger.dart';
 import 'td_risk.dart';
 
 /// 一次待确认的插件操作。
