@@ -29,7 +29,7 @@ on:
         type: boolean
         default: true
       version:
-        description: 'Release 版本号（如 0.1.0-r1），留空则自动用 0.1.0-r<运行序号>'
+        description: 'Release 版本号。留空则按 version.json 自动递增（测试版 0.Y.0-rN）；填 0.1.0 即正式版，填 0.2.0-r0 即下一测试版'
         required: false
         default: ''
   schedule:
@@ -355,8 +355,11 @@ jobs:
           if-no-files-found: error
 
   # ----------------------------------------------------------------- Release (auto)
-  # 手动构建完成后自动发布 GitHub Release：下载所有产物并重命名上传。
-  # 版本默认 0.1.0-r<运行序号>，可在 workflow_dispatch 的 version 输入里覆盖。
+  # 版本规则（状态存于仓库根 version.json: {"minor":"0.Y.0","r":N}）：
+  #   测试版 0.Y.0-rN（prerelease）：每自动构建一次 N+1
+  #   正式版 0.Y.0（stable）：发布后下一测试周期重置为 0.(Y+1).0-r0
+  # 手动在 Run workflow 填 version 可覆盖（填 0.1.0 即正式版；填 0.2.0-r0 即下一测试版）。
+  # 版本号计算后写回 version.json 并推回仓库，保证下次构建继续递增。
   release:
     name: Release
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish_release == 'true'
@@ -365,14 +368,44 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Compute version
+      - uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compute & bump version
         id: ver
         run: |
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "version=0.1.0-r${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          INPUT="${{ github.event.inputs.version }}"
+          if [ ! -f version.json ]; then
+            echo '{"minor":"0.1.0","r":0}' > version.json
           fi
+          if [ -n "$INPUT" ]; then
+            V="$INPUT"
+            if [[ "$V" == *-r* ]]; then
+              MINOR="${V%-r*}"; R="${V##*-r}"
+              printf '{"minor":"%s","r":%d}\n' "$MINOR" "$((R+1))" > version.json
+            else
+              IFS='.' read -r A B C <<< "$V"
+              printf '{"minor":"%s.%d.0","r":0}\n' "$A" "$((B+1))" > version.json
+            fi
+          else
+            MINOR=$(python3 -c "import json;print(json.load(open('version.json'))['minor'])")
+            R=$(python3 -c "import json;print(json.load(open('version.json'))['r'])")
+            V="${MINOR}-r${R}"
+            printf '{"minor":"%s","r":%d}\n' "$MINOR" "$((R+1))" > version.json
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          if [[ "$V" == *-r* ]]; then echo "is_prerelease=true" >> "$GITHUB_OUTPUT";
+          else echo "is_prerelease=false" >> "$GITHUB_OUTPUT"; fi
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add version.json
+          git commit -m "chore: bump version to ${{ steps.ver.outputs.version }}" || echo "no version change"
+          git push || echo "warn: version push skipped"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -394,8 +427,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.ver.outputs.version }}
-          name: ${{ steps.ver.outputs.version }} (测试版)
-          prerelease: true
+          name: ${{ steps.ver.outputs.version }}${{ steps.ver.outputs.is_prerelease == 'true' && ' (测试版)' || '' }}
+          prerelease: ${{ steps.ver.outputs.is_prerelease }}
           files: out/*
 
   # ----------------------------------------------------------------- Clear caches (每周一)
