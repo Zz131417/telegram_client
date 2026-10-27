@@ -110,7 +110,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 subtitle: const Text('查看 / 复制 / 清空运行日志'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const LogsScreen()),
+                  MaterialPageRoute(builder: (_) => LogsScreen()),
                 ),
               ),
               ListTile(
