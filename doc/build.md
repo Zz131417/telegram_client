@@ -89,6 +89,45 @@ lib/
 - `js_bridge.dart`：在 QuickJS 中注入 `td`（含 `send` / `onUpdate`），并做风险拦截
 - `js_plugin_runtime.dart`：`JsPlugin` / `JsPluginRunner`，每个插件独立引擎隔离运行
 
+### 插件包格式
+
+插件以 `.zip` 分发，根目录结构如下：
+
+```
+<plugin>.zip
+├── config.json        # 元信息（必填）
+├── scripts/           # JS 源码（必填，入口为 scripts/main.js）
+│   └── main.js
+├── image/             # 图标 / 封面（可选，UI 展示用）
+└── lib/               # 原生库（可选，预留：当前不自动加载）
+```
+
+`config.json` 字段：
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `id` | 是 | 插件唯一标识 |
+| `name` | 是 | 显示名称 |
+| `version` | 是 | 版本号 |
+| `description` | 否 | 描述 |
+| `entry` | 否 | 入口脚本相对路径，默认 `scripts/main.js` |
+| `minApi` | 否 | 要求的最低 `td` API 版本，默认 `1.0` |
+
+载入：
+
+```dart
+// 从 zip 字节 / 本地文件 / 已解压目录皆可
+final pkg = PluginPackage.fromZip(zipBytes);
+// 或 PluginPackage.fromFile('/path/plugin.zip')
+// 或 PluginPackage.fromDirectory(Directory('extracted/plugin'))
+final runner = JsPluginRunner.fromPackage(pkg, service);
+await runner.start(); // 运行 scripts/main.js
+```
+
+`main.js` 顶层可用全局对象 `td`（见上），另可读取 `td.plugin`（含 `id` / `name`）。
+
+> 说明：`image/`、`lib/` 目前仅作规范保留——`image/` 供 UI 显示图标，`lib/` 暂不在运行时自动加载（Flutter AOT 不支持动态加载原生库）。
+
 JS 侧可用：
 
 ```js
