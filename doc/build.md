@@ -75,3 +75,28 @@ lib/
 ```
 
 所有 TDLib / FFI 细节收敛在 `services/`，UI 与 Provider 不感知——协议字段有出入时只需微调这两处。
+
+---
+
+## 五、JS 插件 API
+
+项目内置一个 QuickJS 引擎（`flutter_qjs_next`），允许第三方脚本通过 `td` 全局对象调用 TDLib。
+相关代码在 `lib/core/js_plugin/`：
+
+- `td_risk.dart`：TDLib 请求风险分级（safe / confirm / danger）
+- `confirmation_gateway.dart`：确认网关抽象 + 无界面默认拒绝实现
+- `confirmation_ui.dart`：基于 AlertDialog 的确认网关，高危操作弹窗询问用户
+- `js_bridge.dart`：在 QuickJS 中注入 `td`（含 `send` / `onUpdate`），并做风险拦截
+- `js_plugin_runtime.dart`：`JsPlugin` / `JsPluginRunner`，每个插件独立引擎隔离运行
+
+JS 侧可用：
+
+```js
+const r = await td.send({ '@type': 'sendMessage', chat_id, input_message_content: {} });
+td.onUpdate((u) => { /* 原始 update 对象 */ });
+```
+
+安全模型：每次 `td.send` 先按 `@type` 判定风险，confirm / danger 级操作经
+`confirmationGateway` 向用户确认，**拒绝则请求被拒**，绝不静默执行。无 UI 环境回退为拒绝。
+
+> 注：引入 `flutter_qjs_next` 后不再满足「零第三方依赖」；其自带原生库会在各平台 `flutter build` 时自动编入，CI 已覆盖 Android / iOS / Linux / Windows / Wear OS。
