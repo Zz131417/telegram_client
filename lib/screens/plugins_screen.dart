@@ -18,10 +18,10 @@ class _PluginsScreenState extends State<PluginsScreen> {
       appBar: AppBar(title: const Text('插件管理')),
       body: ListView.separated(
         padding: const EdgeInsets.all(8),
-        itemCount: plugins.registry.length,
+        itemCount: PluginManager.registry.length,
         separatorBuilder: (_, __) => const Divider(height: 1),
         itemBuilder: (_, i) {
-          final p = plugins.registry[i];
+          final p = PluginManager.registry[i];
           final on = plugins.isEnabled(p.id);
           return SwitchListTile(
             title: Text(p.name),
