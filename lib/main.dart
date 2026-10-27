@@ -7,12 +7,16 @@ import 'package:provider/provider.dart';
 import 'core/logger.dart';
 import 'core/plugin_manager.dart';
 import 'core/settings_store.dart';
+import 'core/js_plugin/confirmation_gateway.dart';
+import 'core/js_plugin/confirmation_ui.dart';
 import 'theme/app_theme.dart';
 import 'providers/chats_provider.dart';
 import 'services/td_service.dart';
 import 'services/td_lib_service.dart';
 import 'services/service_notifier.dart';
 import 'screens/login_screen.dart';
+
+final navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +38,9 @@ Future<void> main() async {
   // 加载持久化设置与插件状态。
   await settings.load();
   await plugins.load();
+
+  // 高危插件操作改用弹窗向用户确认。
+  confirmationGateway = UiConfirmationGateway(navigatorKey);
 
   log.i('App', 'Telegram client 启动');
 
@@ -76,6 +83,7 @@ class _ThemedApp extends StatelessWidget {
     final themeMode = context.watch<SettingsStore>().themeMode;
     return MaterialApp(
       title: 'Telegram',
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
