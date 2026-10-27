@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../models/chat.dart';
 import '../models/message.dart';
+import '../models/proxy_config.dart';
 import 'auth_state.dart';
 import 'mock_data.dart';
 
@@ -37,6 +38,12 @@ abstract class TdService {
   /// 发送一条文本消息。
   Future<void> sendMessage(String chatId, String text);
 
+  /// 设置代理（SOCKS5 / MTProto）。真实登录后即时下发到 TDLib。
+  Future<void> setProxy(ProxyConfig config);
+
+  /// 清除代理。
+  Future<void> clearProxy();
+
   /// 释放底层资源。
   Future<void> dispose();
 }
@@ -47,6 +54,7 @@ abstract class TdService {
 class MockTdService implements TdService {
   final _auth = StreamController<AuthEvent>.broadcast();
   final _messages = StreamController<Message>.broadcast();
+  ProxyConfig? _proxy;
 
   @override
   Stream<AuthEvent> get authEvents => _auth.stream;
@@ -97,6 +105,16 @@ class MockTdService implements TdService {
     // 模拟服务端回执
     await Future<void>.delayed(const Duration(milliseconds: 120));
     _messages.add(msg);
+  }
+
+  @override
+  Future<void> setProxy(ProxyConfig config) async {
+    _proxy = config;
+  }
+
+  @override
+  Future<void> clearProxy() async {
+    _proxy = null;
   }
 
   @override
