@@ -150,7 +150,7 @@ class _LogFloatState extends State<_LogFloat> {
             ),
             TextButton(
               onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const LogsScreen()),
+                MaterialPageRoute(builder: (_) => LogsScreen()),
               ),
               child: const Text('完整日志'),
             ),
