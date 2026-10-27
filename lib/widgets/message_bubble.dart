@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../core/plugin_manager.dart';
 import '../models/message.dart';
 import '../theme/app_theme.dart';
 
 /// 消息气泡：进屏时滑入 + 淡入，自己发的靠右、对方的靠左。
+/// 「紧凑气泡」插件开启时减小内边距，单屏显示更多内容。
 class MessageBubble extends StatelessWidget {
   const MessageBubble({super.key, required this.message});
   final Message message;
@@ -11,13 +13,20 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chat = context.chat;
+    final compact = plugins.isEnabled('compact_bubbles');
     final maxWidth = MediaQuery.of(context).size.width * 0.74;
     return Align(
       alignment:
           message.isOutgoing ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        margin: EdgeInsets.symmetric(
+          vertical: compact ? 2 : 4,
+          horizontal: 12,
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 10 : 14,
+          vertical: compact ? 5 : 9,
+        ),
         constraints: BoxConstraints(maxWidth: maxWidth),
         decoration: BoxDecoration(
           color: message.isOutgoing
