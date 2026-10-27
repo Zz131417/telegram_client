@@ -1,0 +1,55 @@
+# 单独清理 GitHub Actions 缓存的 worker（与构建工作流解耦）。
+#
+# 触发：
+#   - workflow_dispatch : 手动触发（Actions 页点 Run workflow），随时清理
+#   - schedule          : 每周一 03:00 UTC 自动清理
+#
+# 用 GitHub API 翻页拉取仓库所有缓存并逐个删除，避免 pub / Gradle 等缓存陈旧或膨胀。
+
+name: Clear Caches
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1'
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  clear-caches:
+    name: Clear Caches
+    runs-on: ubuntu-latest
+    concurrency:
+      group: clear-caches
+    steps:
+      - name: Delete all caches
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          echo "Repository: $REPO"
+          PAGE=1
+          DELETED=0
+          while :; do
+            RESP=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$REPO/actions/caches?per_page=100&page=$PAGE")
+            IDS=$(echo "$RESP" | python3 -c \
+              "import sys,json; d=json.load(sys.stdin); print('\n'.join(str(c['id']) for c in d.get('actions_caches',[])))" || true)
+            [ -z "$IDS" ] && break
+            for id in $IDS; do
+              curl -s -X DELETE -H "Authorization: Bearer $GH_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/$REPO/actions/caches/$id"
+              DELETED=$((DELETED+1))
+              echo "deleted cache id=$id"
+            done
+            TOTAL=$(echo "$RESP" | python3 -c \
+              "import sys,json; print(json.load(sys.stdin).get('total_count',0))" || echo 0)
+            [ "$TOTAL" -le $((PAGE*100)) ] && break
+            PAGE=$((PAGE+1))
+          done
+          echo "Cleared $DELETED cache(s)."
