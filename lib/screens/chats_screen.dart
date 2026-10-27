@@ -8,6 +8,7 @@ import '../providers/chats_provider.dart';
 import '../routes/transitions.dart';
 import '../widgets/chat_list_tile.dart';
 import 'chat_detail_screen.dart';
+import 'logs_screen.dart';
 import 'settings_screen.dart';
 
 /// 聊天列表页：下拉刷新 + 错峰进场动画；点击用 SlidePageRoute 滑入详情。
