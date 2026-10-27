@@ -51,16 +51,21 @@ class JsBridge {
 
     // 定义 setup(send, onUpdate)，由 Dart 注入两个可调用函数。
     _engine.evaluate('''
-      function __setup(send, onUpdate) {
+      function __setup(send, onUpdate, plugin) {
         globalThis.td = {
           version: '1.0',
+          plugin: plugin,
           send: send,
           onUpdate: function(cb) { onUpdate(cb); },
         };
       }
     ''');
     final setup = _engine.evaluate('__setup') as dynamic;
-    setup.invoke([_dartSend, _dartOnUpdate]);
+    setup.invoke([
+      _dartSend,
+      _dartOnUpdate,
+      {'id': pluginId, 'name': pluginName},
+    ]);
 
     _sub = service.updates.listen(_forwardUpdate);
     _initialized = true;
