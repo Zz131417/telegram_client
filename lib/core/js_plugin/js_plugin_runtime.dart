@@ -1,5 +1,6 @@
 import '../../services/td_service.dart';
 import 'js_bridge.dart';
+import 'plugin_package.dart';
 
 /// 一个 JS 插件（脚本 + 元信息）。
 class JsPlugin {
@@ -12,6 +13,13 @@ class JsPlugin {
   final String id;
   final String name;
   final String source;
+
+  /// 从解析后的插件包构造（入口脚本即包的 entryScript）。
+  factory JsPlugin.fromPackage(PluginPackage pkg) => JsPlugin(
+        id: pkg.manifest.id,
+        name: pkg.manifest.name,
+        source: pkg.entryScript,
+      );
 }
 
 /// 运行单个 JS 插件的运行时：持有独立 QuickJS 引擎，隔离执行。
@@ -22,7 +30,11 @@ class JsPluginRunner {
   final TdService service;
   JsBridge? _bridge;
 
-  /// 启动插件：初始化引擎并运行脚本。
+  /// 从插件包直接构造 runner。
+  factory JsPluginRunner.fromPackage(PluginPackage pkg, TdService service) =>
+      JsPluginRunner(JsPlugin.fromPackage(pkg), service);
+
+  /// 启动插件：初始化引擎并运行入口脚本。
   Future<void> start() async {
     _bridge?.dispose();
     _bridge = JsBridge(
