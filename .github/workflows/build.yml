@@ -1,36 +1,30 @@
 # Build the client on GitHub Actions workers.
 #
-# Targets:
-#   - Android  (arm64-v8a / armeabi-v7a / x86_64) -> per-ABI APKs  [bundles libtdjson]
-#   - Linux    (x64 only — Flutter's official Linux SDK is x86-64; arm64 Linux
-#               is not published by Flutter, so it cannot be built from the
-#               official SDK on CI)                       -> portable tar.gz [bundles libtdjson]
-#   - Windows  (x64)                               -> zip bundle            [bundles libtdjson]
-#   - iOS      (simulator, debug, unsigned)         -> Runner.app for simulator
-#   - iOS IPA  (real device, UNSIGNED)            -> .ipa   [no Apple secrets]
-#   - Wear OS  (arm64)                            -> APK    [bundles libtdjson]
+# Triggers:
+#   - workflow_dispatch : 手动触发构建（所有 build job 仅在手动时运行）
+#   - schedule (每周一)  : 仅运行 clear-caches，清空所有缓存
 #
-# Real Telegram login: the native libtdjson is bundled into ALL builds
-# (Android / Linux / Windows / Wear OS / iOS sim / iOS device IPA), so every
-# package can log in out of the box. The unsigned iOS IPA must be sideloaded
-# via AltStore / Sideloadly / ESign (which re-sign the bundle + embedded dylib).
+# Targets (手动构建):
+#   - Android  (arm64-v8a / armeabi-v7a / x86_64) -> per-ABI APKs  [bundles libtdjson]
+#   - Linux    (x64 only — Flutter's official Linux SDK is x86-64) -> tar.gz [bundles libtdjson]
+#   - Windows  (x64)                                   -> zip bundle  [bundles libtdjson]
+#   - iOS      (simulator, debug, unsigned)            -> Runner.app
+#   - iOS IPA  (real device, UNSIGNED)                 -> .ipa
+#   - Wear OS  (arm64)                                -> APK         [bundles libtdjson]
 #
 # Caching: pub packages (~/.pub-cache via PUB_CACHE) and Gradle (~/.gradle) are
-# restored across runs so we don't re-download everything on every push.
+# restored across runs. They are force-cleared every Monday by the clear-caches
+# job to avoid stale / bloated caches.
 #
-# Secrets: none required. The iOS IPA is built unsigned (no Apple cert needed);
-#          sideload it via AltStore/Sideloadly/ESign which re-sign on install.
+# Secrets: none required.
 
 name: Build
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-
-concurrency:
-  group: build-${{ github.ref }}
-  cancel-in-progress: false
+  schedule:
+    # 每周一 03:00 UTC 触发 clear-caches（仅该 job 运行）
+    - cron: '0 3 * * 1'
 
 permissions:
   contents: read
@@ -42,6 +36,7 @@ jobs:
   # ----------------------------------------------------------------- Android
   android:
     name: Android (${{ matrix.abi }})
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -105,6 +100,7 @@ jobs:
   # ----------------------------------------------------------------- Linux (x64)
   linux:
     name: Linux (x64)
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -149,6 +145,7 @@ jobs:
   # ----------------------------------------------------------------- Windows
   windows:
     name: Windows (x64)
+    if: github.event_name == 'workflow_dispatch'
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v7
@@ -191,6 +188,7 @@ jobs:
   # ----------------------------------------------------------------- iOS (simulator, debug, unsigned)
   ios:
     name: iOS (simulator)
+    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v7
@@ -214,7 +212,8 @@ jobs:
         run: flutter build ios --simulator --debug
       - name: Download & embed libtdjson (iOS simulator)
         run: |
-          curl -L --retry 3 -o /tmp/xc.tar.gz             https://github.com/up9cloud/ios-libtdjson/releases/download/v1.8.65/libtdjson.xcframework.tar.gz
+          curl -L --retry 3 -o /tmp/xc.tar.gz \
+            https://github.com/up9cloud/ios-libtdjson/releases/download/v1.8.65/libtdjson.xcframework.tar.gz
           rm -rf /tmp/xc && mkdir -p /tmp/xc && tar -xzf /tmp/xc.tar.gz -C /tmp/xc
           DYLIB=$(find /tmp/xc -path '*simulator*/libtdjson.dylib' | head -n 1)
           echo "sim dylib: $DYLIB"
@@ -222,7 +221,8 @@ jobs:
           install_name_tool -id @rpath/libtdjson.dylib "$DYLIB"
           mkdir -p build/ios/iphonesimulator/Runner.app/Frameworks
           cp "$DYLIB" build/ios/iphonesimulator/Runner.app/Frameworks/
-          codesign --force --sign - --timestamp=none             build/ios/iphonesimulator/Runner.app/Frameworks/libtdjson.dylib
+          codesign --force --sign - --timestamp=none \
+            build/ios/iphonesimulator/Runner.app/Frameworks/libtdjson.dylib
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
@@ -231,13 +231,9 @@ jobs:
           if-no-files-found: error
 
   # ----------------------------------------------------------------- iOS IPA (UNSIGNED)
-  # Builds for a real device WITHOUT signing, then packages the .app into an .ipa.
-  # No Apple secrets needed — the .ipa is unsigned and can be sideloaded via
-  # AltStore / Sideloadly / ESign (those tools re-sign on install). It will NOT
-  # install on a stock, non-jailbroken device directly (iOS requires a signature).
-  # iOS device login needs libtdjson.dylib added to the app (see README).
   ios-ipa:
     name: iOS IPA (unsigned)
+    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v7
@@ -260,7 +256,8 @@ jobs:
         run: flutter build ios --release --no-codesign
       - name: Download & embed libtdjson (iOS device)
         run: |
-          curl -L --retry 3 -o /tmp/xc.tar.gz             https://github.com/up9cloud/ios-libtdjson/releases/download/v1.8.65/libtdjson.xcframework.tar.gz
+          curl -L --retry 3 -o /tmp/xc.tar.gz \
+            https://github.com/up9cloud/ios-libtdjson/releases/download/v1.8.65/libtdjson.xcframework.tar.gz
           rm -rf /tmp/xc && mkdir -p /tmp/xc && tar -xzf /tmp/xc.tar.gz -C /tmp/xc
           DYLIB=$(find /tmp/xc -path '*ios-arm64/libtdjson.dylib' | head -n 1)
           echo "device dylib: $DYLIB"
@@ -268,7 +265,8 @@ jobs:
           install_name_tool -id @rpath/libtdjson.dylib "$DYLIB"
           mkdir -p build/ios/iphoneos/Runner.app/Frameworks
           cp "$DYLIB" build/ios/iphoneos/Runner.app/Frameworks/
-          codesign --force --sign - --timestamp=none             build/ios/iphoneos/Runner.app/Frameworks/libtdjson.dylib
+          codesign --force --sign - --timestamp=none \
+            build/ios/iphoneos/Runner.app/Frameworks/libtdjson.dylib
       # An .ipa is just a zip with a top-level Payload/ folder containing the .app
       # (which already embeds libtdjson.dylib in Frameworks/).
       - name: Package unsigned .ipa
@@ -289,11 +287,9 @@ jobs:
           if-no-files-found: error
 
   # ----------------------------------------------------------------- Wear OS (arm64)
-  # Standalone Wear OS companion. We declare the watch hardware feature in the
-  # manifest (required=false so phones can still install) and bump minSdk to 30
-  # (Wear OS 4/5), then build an arm64 APK from the watch-specific entry point.
   wear:
     name: Wear OS (arm64)
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -347,3 +343,45 @@ jobs:
           name: wearos-arm64
           path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           if-no-files-found: error
+
+  # ----------------------------------------------------------------- Clear caches (每周一)
+  # 定时任务：每周一清空所有 GitHub Actions 缓存（pub / gradle 等），避免缓存
+  # 陈旧或膨胀。仅在 schedule 触发时运行，手动触发时跳过。
+  clear-caches:
+    name: Clear Caches (每周一)
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: clear-caches
+    permissions:
+      actions: write
+    steps:
+      - name: Delete all caches
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          echo "Repository: $REPO"
+          PAGE=1
+          DELETED=0
+          while :; do
+            RESP=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$REPO/actions/caches?per_page=100&page=$PAGE")
+            IDS=$(echo "$RESP" | python3 -c \
+              "import sys,json; d=json.load(sys.stdin); print('\n'.join(str(c['id']) for c in d.get('actions_caches',[])))" || true)
+            [ -z "$IDS" ] && break
+            for id in $IDS; do
+              curl -s -X DELETE -H "Authorization: Bearer $GH_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/$REPO/actions/caches/$id"
+              DELETED=$((DELETED+1))
+              echo "deleted cache id=$id"
+            done
+            TOTAL=$(echo "$RESP" | python3 -c \
+              "import sys,json; print(json.load(sys.stdin).get('total_count',0))" || echo 0)
+            [ "$TOTAL" -le $((PAGE*100)) ] && break
+            PAGE=$((PAGE+1))
+          done
+          echo "Cleared $DELETED cache(s)."
