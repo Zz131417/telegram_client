@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'core/logger.dart';
+import 'core/plugin_manager.dart';
+import 'core/settings_store.dart';
 import 'theme/app_theme.dart';
 import 'providers/chats_provider.dart';
 import 'services/td_service.dart';
@@ -29,6 +31,10 @@ Future<void> main() async {
     log.w('App', '无法挂载日志文件（忽略）: $e');
   }
 
+  // 加载持久化设置与插件状态。
+  await settings.load();
+  await plugins.load();
+
   log.i('App', 'Telegram client 启动');
 
   runApp(const MyApp());
@@ -45,6 +51,7 @@ class MyApp extends StatelessWidget {
 
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider<SettingsStore>.value(value: settings),
         ChangeNotifierProvider<ServiceNotifier>.value(value: notifier),
         ChangeNotifierProxyProvider<ServiceNotifier, ChatsProvider>(
           create: (c) => ChatsProvider(c.read<ServiceNotifier>().service),
@@ -55,14 +62,29 @@ class MyApp extends StatelessWidget {
           },
         ),
       ],
-      child: MaterialApp(
-        title: 'Telegram',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light(),
-        darkTheme: AppTheme.dark(),
-        themeMode: ThemeMode.system,
-        home: const LoginScreen(),
-      ),
+      child: const _ThemedApp(),
+    );
+  }
+}
+
+/// 监听 [SettingsStore] 以即时切换主题。
+class _ThemedApp extends StatelessWidget {
+  const _ThemedApp();
+
+  @override
+  Widget build(BuildContext context) {
+    final themeMode = context.watch<SettingsStore>().themeMode;
+    return MaterialApp(
+      title: 'Telegram',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: themeMode == 'light'
+          ? ThemeMode.light
+          : themeMode == 'dark'
+              ? ThemeMode.dark
+              : ThemeMode.system,
+      home: const LoginScreen(),
     );
   }
 }
