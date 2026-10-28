@@ -165,7 +165,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 6),
         decoration: BoxDecoration(
           color: theme.cardColor,
-          borderRadius: BorderRadius.circular(26),
+          borderRadius: BorderRadius.circular(context.layout.inputBarRadius),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.06),
