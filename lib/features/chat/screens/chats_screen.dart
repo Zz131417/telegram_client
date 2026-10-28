@@ -8,6 +8,7 @@ import '../providers/chats_provider.dart';
 import '../../../routes/transitions.dart';
 import '../widgets/chat_list_tile.dart';
 import './chat_detail_screen.dart';
+import '../tg_link.dart';
 import '../../settings/screens/logs_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../../theme/app_theme.dart';
@@ -26,6 +27,16 @@ class _ChatsScreenState extends State<ChatsScreen> {
   void initState() {
     super.initState();
     Future.microtask(() => context.read<ChatsProvider>().load());
+    _consumePendingTgLink();
+  }
+
+  void _consumePendingTgLink() {
+    if (pendingTgLink == null) return;
+    final link = pendingTgLink!;
+    pendingTgLink = null;
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (mounted) openTgUri(context, link);
+    });
   }
 
   @override
