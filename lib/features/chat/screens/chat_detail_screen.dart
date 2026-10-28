@@ -7,6 +7,7 @@ import '../../../models/message.dart';
 import '../../../services/service_notifier.dart';
 import '../../../services/td_service.dart';
 import '../widgets/message_bubble.dart';
+import '../../../theme/app_theme.dart';
 
 /// 聊天详情页：真实拉取历史 + 订阅新消息 + 发送文本。
 class ChatDetailScreen extends StatefulWidget {
