@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/chat.dart';
 import '../routes/transitions.dart';
+import '../theme/app_theme.dart';
 
 /// 聊天列表项：头像（首字母色块）+ 标题 + 最后一条消息 + 未读数。
+/// 布局随主题预设变化：Telegram X 下未读标题加粗、预览用主色强调、头像更小更紧凑。
 class ChatListTile extends StatelessWidget {
   const ChatListTile({
     super.key,
@@ -17,6 +19,14 @@ class ChatListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final layout = context.layout;
+    final unread = chat.unreadCount > 0;
+    final titleWeight = unread
+        ? (layout.unreadTitleBold ? FontWeight.w700 : FontWeight.w600)
+        : (layout.unreadTitleBold ? FontWeight.w500 : FontWeight.w600);
+    final previewColor = unread && layout.unreadPreviewAccent
+        ? theme.colorScheme.primary
+        : theme.hintColor;
     return StaggeredList(
       index: index,
       child: Material(
@@ -24,13 +34,16 @@ class ChatListTile extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            padding: EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: layout.listTileVerticalPadding,
+            ),
             child: Row(
               children: [
                 Hero(
                   tag: 'avatar-${chat.id}',
                   child: CircleAvatar(
-                    radius: 27,
+                    radius: layout.avatarRadius,
                     backgroundColor: chat.avatarColor,
                     backgroundImage: chat.avatarUrl != null
                         ? NetworkImage(chat.avatarUrl!)
@@ -38,10 +51,10 @@ class ChatListTile extends StatelessWidget {
                     child: chat.avatarUrl == null
                         ? Text(
                             chat.title.isNotEmpty ? chat.title[0] : '',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w600,
-                              fontSize: 18,
+                              fontSize: layout.avatarRadius * 0.62,
                             ),
                           )
                         : null,
@@ -57,8 +70,8 @@ class ChatListTile extends StatelessWidget {
                           Expanded(
                             child: Text(
                               chat.title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
+                              style: TextStyle(
+                                fontWeight: titleWeight,
                                 fontSize: 16,
                               ),
                               maxLines: 1,
@@ -82,14 +95,14 @@ class ChatListTile extends StatelessWidget {
                             child: Text(
                               chat.lastMessage?.text ?? '',
                               style: TextStyle(
-                                color: theme.hintColor,
+                                color: previewColor,
                                 fontSize: 14,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (chat.unreadCount > 0)
+                          if (unread)
                             Container(
                               margin: const EdgeInsets.only(left: 8),
                               padding: const EdgeInsets.symmetric(
