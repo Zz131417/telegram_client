@@ -80,13 +80,16 @@ class _ThemedApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeMode = context.watch<SettingsStore>().themeMode;
+    final store = context.watch<SettingsStore>();
+    final preset =
+        store.themePreset == 'x' ? ThemePreset.x : ThemePreset.classic;
+    final themeMode = store.themeMode;
     return MaterialApp(
       title: 'Telegram',
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
+      theme: AppTheme.build(preset, Brightness.light),
+      darkTheme: AppTheme.build(preset, Brightness.dark),
       themeMode: themeMode == 'light'
           ? ThemeMode.light
           : themeMode == 'dark'
