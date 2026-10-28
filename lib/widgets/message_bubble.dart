@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 
 /// 消息气泡：进屏时滑入 + 淡入，自己发的靠右、对方的靠左。
 /// 「紧凑气泡」插件开启时减小内边距，单屏显示更多内容。
+/// 布局随主题预设变化：Telegram X 下自己发的消息用主色实心气泡（白字）。
 class MessageBubble extends StatelessWidget {
   const MessageBubble({super.key, required this.message});
   final Message message;
@@ -13,11 +14,29 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chat = context.chat;
+    final layout = context.layout;
     final compact = plugins.isEnabled('compact_bubbles');
     final maxWidth = MediaQuery.of(context).size.width * 0.74;
+    final outgoing = message.isOutgoing;
+    final ownSolid = layout.ownBubbleSolid && outgoing;
+    final bg = ownSolid
+        ? Theme.of(context).colorScheme.primary
+        : (outgoing
+            ? Theme.of(context).colorScheme.primary.withOpacity(0.12)
+            : chat.bubble);
+    final fg = ownSolid ? Colors.white : chat.onBubble;
+    final hintFg = ownSolid ? Colors.white70 : chat.hint;
+    final radius = layout.bubbleRadius;
+    final br = layout.ownBubbleSolid
+        ? BorderRadius.circular(radius)
+        : BorderRadius.only(
+            topLeft: Radius.circular(radius),
+            topRight: Radius.circular(radius),
+            bottomLeft: Radius.circular(outgoing ? radius : 4),
+            bottomRight: Radius.circular(outgoing ? 4 : radius),
+          );
     return Align(
-      alignment:
-          message.isOutgoing ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: outgoing ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: EdgeInsets.symmetric(
           vertical: compact ? 2 : 4,
@@ -29,15 +48,8 @@ class MessageBubble extends StatelessWidget {
         ),
         constraints: BoxConstraints(maxWidth: maxWidth),
         decoration: BoxDecoration(
-          color: message.isOutgoing
-              ? Theme.of(context).colorScheme.primary.withOpacity(0.12)
-              : chat.bubble,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(message.isOutgoing ? 16 : 4),
-            bottomRight: Radius.circular(message.isOutgoing ? 4 : 16),
-          ),
+          color: bg,
+          borderRadius: br,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -45,7 +57,7 @@ class MessageBubble extends StatelessWidget {
             Text(
               message.text,
               style: TextStyle(
-                color: chat.onBubble,
+                color: fg,
                 fontSize: 15,
                 height: 1.35,
               ),
@@ -56,9 +68,9 @@ class MessageBubble extends StatelessWidget {
               children: [
                 Text(
                   _hm(message.time),
-                  style: TextStyle(color: chat.hint, fontSize: 11),
+                  style: TextStyle(color: hintFg, fontSize: 11),
                 ),
-                if (message.isOutgoing) ...[
+                if (outgoing) ...[
                   const SizedBox(width: 4),
                   Icon(
                     message.status == MessageStatus.read
@@ -66,8 +78,8 @@ class MessageBubble extends StatelessWidget {
                         : Icons.done,
                     size: 14,
                     color: message.status == MessageStatus.read
-                        ? Theme.of(context).colorScheme.primary
-                        : chat.hint,
+                        ? (ownSolid ? Colors.white70 : Theme.of(context).colorScheme.primary)
+                        : hintFg,
                   ),
                 ],
               ],
@@ -79,7 +91,7 @@ class MessageBubble extends StatelessWidget {
         .animate()
         .fadeIn(duration: 220.ms, curve: Curves.easeOut)
         .slideY(
-          begin: message.isOutgoing ? 0.12 : -0.12,
+          begin: outgoing ? 0.12 : -0.12,
           end: 0,
           duration: 240.ms,
           curve: Curves.easeOutCubic,
