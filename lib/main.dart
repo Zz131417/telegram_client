@@ -15,6 +15,7 @@ import 'services/td_service.dart';
 import 'services/td_lib_service.dart';
 import 'services/service_notifier.dart';
 import 'features/auth/screens/login_screen.dart';
+import 'features/chat/tg_deeplink.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
@@ -38,6 +39,7 @@ Future<void> main() async {
   // 加载持久化设置与插件状态。
   await settings.load();
   await plugins.load();
+  initTgDeepLinks();
 
   // 高危插件操作改用弹窗向用户确认。
   confirmationGateway = UiConfirmationGateway(navigatorKey);
