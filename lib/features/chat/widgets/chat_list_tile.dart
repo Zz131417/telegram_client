@@ -5,16 +5,19 @@ import '../../../theme/app_theme.dart';
 
 /// 聊天列表项：头像（首字母色块）+ 标题 + 最后一条消息 + 未读数。
 /// 布局随主题预设变化：Telegram X 下未读标题加粗、预览用主色强调、头像更小更紧凑。
+/// 置顶会话在标题前显示图钉，长按可置顶 / 取消置顶。
 class ChatListTile extends StatelessWidget {
   const ChatListTile({
     super.key,
     required this.chat,
     required this.index,
     required this.onTap,
+    this.onLongPress,
   });
   final Chat chat;
   final int index;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +36,7 @@ class ChatListTile extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
+          onLongPress: onLongPress,
           child: Padding(
             padding: EdgeInsets.symmetric(
               horizontal: 14,
@@ -67,6 +71,15 @@ class ChatListTile extends StatelessWidget {
                     children: [
                       Row(
                         children: [
+                          if (chat.isPinned)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 4),
+                              child: Icon(
+                                Icons.push_pin,
+                                size: 14,
+                                color: theme.hintColor,
+                              ),
+                            ),
                           Expanded(
                             child: Text(
                               chat.title,
