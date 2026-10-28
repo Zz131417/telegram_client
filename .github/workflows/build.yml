@@ -98,14 +98,26 @@ jobs:
       - name: Register tg:// URL scheme (Android)
         run: |
           python3 - <<'PY'
-          import pathlib
+          import pathlib, re
           p = pathlib.Path('android/app/src/main/AndroidManifest.xml')
           s = p.read_text()
           if 'android:scheme="tg"' not in s:
-              n = s.index('<category android:name="android.intent.category.LAUNCHER" />') + len('<category android:name="android.intent.category.LAUNCHER" />')
-              s = s[:n] + '<intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="tg" /></intent-filter>' + s[n:]
-              p.write_text(s)
-          print('android tg scheme ok')
+              m = re.search(r'android\.intent\.category\.LAUNCHER\s*/>', s)
+              if m:
+                  n = m.end()
+                  intent = ('<intent-filter>'
+                            '<action android:name="android.intent.action.VIEW" />'
+                            '<category android:name="android.intent.category.DEFAULT" />'
+                            '<category android:name="android.intent.category.BROWSABLE" />'
+                            '<data android:scheme="tg" />'
+                            '</intent-filter>')
+                  s = s[:n] + intent + s[n:]
+                  p.write_text(s)
+                  print('android tg scheme ok')
+              else:
+                  print('WARN launcher not found, skip tg scheme')
+          else:
+              print('android tg scheme already present')
           PY
 
       - name: Build ${{ matrix.abi }} APK
@@ -400,14 +412,26 @@ jobs:
       - name: Register tg:// URL scheme (Android)
         run: |
           python3 - <<'PY'
-          import pathlib
+          import pathlib, re
           p = pathlib.Path('android/app/src/main/AndroidManifest.xml')
           s = p.read_text()
           if 'android:scheme="tg"' not in s:
-              n = s.index('<category android:name="android.intent.category.LAUNCHER" />') + len('<category android:name="android.intent.category.LAUNCHER" />')
-              s = s[:n] + '<intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="tg" /></intent-filter>' + s[n:]
-              p.write_text(s)
-          print('android tg scheme ok')
+              m = re.search(r'android\.intent\.category\.LAUNCHER\s*/>', s)
+              if m:
+                  n = m.end()
+                  intent = ('<intent-filter>'
+                            '<action android:name="android.intent.action.VIEW" />'
+                            '<category android:name="android.intent.category.DEFAULT" />'
+                            '<category android:name="android.intent.category.BROWSABLE" />'
+                            '<data android:scheme="tg" />'
+                            '</intent-filter>')
+                  s = s[:n] + intent + s[n:]
+                  p.write_text(s)
+                  print('android tg scheme ok')
+              else:
+                  print('WARN launcher not found, skip tg scheme')
+          else:
+              print('android tg scheme already present')
           PY
 
       - name: Build Wear OS APK (arm64)
