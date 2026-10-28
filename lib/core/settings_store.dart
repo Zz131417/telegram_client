@@ -16,8 +16,12 @@ class SettingsStore extends ChangeNotifier {
   /// 当前代理（null 表示不走代理）。
   ProxyConfig? proxy;
 
-  /// 主题偏好：'system' | 'light' | 'dark'。
+  /// 主题亮度偏好：'system' | 'light' | 'dark'。
   String themeMode = 'system';
+
+  /// 主题预设：'classic'（原版 Telegram）| 'x'（Telegram X）。
+  String themePreset = 'classic';
+
 
   /// 上次登录选择的凭据方式（0=Android 官方 / 1=Desktop 官方 / 2=iOS-X 官方 / 3=自定义）。
   int? lastCredentialChoice;
