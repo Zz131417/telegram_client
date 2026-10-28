@@ -10,9 +10,11 @@ class Chat {
     required this.type,
     required this.avatarColor,
     this.avatarUrl,
+    this.username,
     this.lastMessage,
     this.unreadCount = 0,
     this.isMuted = false,
+    this.isPinned = false,
   });
 
   final String id;
@@ -20,18 +22,29 @@ class Chat {
   final ChatType type;
   final Color avatarColor;
   final String? avatarUrl;
+  final String? username;
   final Message? lastMessage;
   final int unreadCount;
   final bool isMuted;
+  final bool isPinned;
 
-  Chat copyWith({Message? lastMessage, int? unreadCount}) => Chat(
+  Chat copyWith({
+    Message? lastMessage,
+    int? unreadCount,
+    bool? isMuted,
+    bool? isPinned,
+    String? username,
+  }) =>
+      Chat(
         id: id,
         title: title,
         type: type,
         avatarColor: avatarColor,
         avatarUrl: avatarUrl,
+        username: username ?? this.username,
         lastMessage: lastMessage ?? this.lastMessage,
         unreadCount: unreadCount ?? this.unreadCount,
-        isMuted: isMuted,
+        isMuted: isMuted ?? this.isMuted,
+        isPinned: isPinned ?? this.isPinned,
       );
 }
