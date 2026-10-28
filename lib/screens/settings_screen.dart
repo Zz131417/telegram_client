@@ -60,6 +60,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
               ),
+              const ListTile(
+                leading: Icon(Icons.style_outlined),
+                title: Text('主题风格'),
+                subtitle: Text('原版 Telegram / Telegram X'),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                      value: 'classic',
+                      label: Text('原版'),
+                      icon: Icon(Icons.chat_bubble_outline),
+                    ),
+                    ButtonSegment(
+                      value: 'x',
+                      label: Text('Telegram X'),
+                      icon: Icon(Icons.chat_bubble),
+                    ),
+                  ],
+                  selected: {settings.themePreset},
+                  onSelectionChanged: (s) async {
+                    await settings.setThemePreset(s.first);
+                    setState(() {});
+                  },
+                ),
+              ),
             ],
           ),
           _Section(
