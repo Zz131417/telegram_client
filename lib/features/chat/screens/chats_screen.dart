@@ -10,6 +10,7 @@ import '../widgets/chat_list_tile.dart';
 import './chat_detail_screen.dart';
 import '../../settings/screens/logs_screen.dart';
 import '../../settings/screens/settings_screen.dart';
+import '../../../theme/app_theme.dart';
 
 /// 聊天列表页：下拉刷新 + 错峰进场动画；点击用 SlidePageRoute 滑入详情。
 class ChatsScreen extends StatefulWidget {
