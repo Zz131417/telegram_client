@@ -1,9 +1,9 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../core/plugin_manager.dart';
-import '../../models/message.dart';
-import '../../theme/app_theme.dart';
+import '../../../core/plugin_manager.dart';
+import '../../../models/message.dart';
+import '../../../theme/app_theme.dart';
 import '../tg_link.dart';
 
 /// 消息气泡：进屏时滑入 + 淡入，自己发的靠右、对方的靠左。
