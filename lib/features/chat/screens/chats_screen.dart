@@ -13,6 +13,7 @@ import '../../settings/screens/settings_screen.dart';
 import '../../../theme/app_theme.dart';
 
 /// 聊天列表页：下拉刷新 + 错峰进场动画；点击用 SlidePageRoute 滑入详情。
+/// 长按会话弹出菜单，可置顶 / 取消置顶。
 class ChatsScreen extends StatefulWidget {
   const ChatsScreen({super.key});
 
@@ -69,6 +70,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                           chat: chat,
                           index: i,
                           onTap: () => _openChat(context, chat),
+                          onLongPress: () => _showPinSheet(context, chat),
                         );
                       },
                     ),
@@ -92,6 +94,41 @@ class _ChatsScreenState extends State<ChatsScreen> {
   void _openChat(BuildContext context, Chat chat) {
     Navigator.of(context).push(
       SlidePageRoute(page: ChatDetailScreen(chat: chat)),
+    );
+  }
+
+  /// 长按会话弹出的操作菜单：置顶 / 取消置顶 + 打开。
+  void _showPinSheet(BuildContext context, Chat chat) {
+    final provider = context.read<ChatsProvider>();
+    final wasPinned = chat.isPinned;
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(wasPinned ? Icons.push_pin : Icons.push_pin_outlined),
+              title: Text(wasPinned ? '取消置顶' : '置顶'),
+              onTap: () {
+                provider.togglePin(chat.id);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(wasPinned ? '已取消置顶' : '已置顶')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.open_in_new_outlined),
+              title: const Text('打开'),
+              onTap: () {
+                Navigator.pop(context);
+                _openChat(context, chat);
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
