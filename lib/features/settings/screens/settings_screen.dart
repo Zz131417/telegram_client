@@ -5,6 +5,7 @@ import './import_screen.dart';
 import './logs_screen.dart';
 import './plugins_screen.dart';
 import './proxy_screen.dart';
+import '../../../theme/app_theme.dart';
 
 /// 设置页：按「外观 / 网络 / 扩展 / 高级」分组，逐项可点击进入。
 class SettingsScreen extends StatefulWidget {
