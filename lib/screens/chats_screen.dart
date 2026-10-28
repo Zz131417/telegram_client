@@ -29,6 +29,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ChatsProvider>();
+    final layout = context.layout;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Telegram', style: TextStyle(fontWeight: FontWeight.w700)),
@@ -58,11 +59,9 @@ class _ChatsScreenState extends State<ChatsScreen> {
                   : ListView.separated(
                       padding: const EdgeInsets.only(top: 6, bottom: 12),
                       itemCount: provider.chats.length,
-                      separatorBuilder: (_, __) => const Divider(
-                        height: 1,
-                        indent: 70,
-                        endIndent: 16,
-                      ),
+                      separatorBuilder: (_, __) => layout.showDividers
+                          ? const Divider(height: 1, indent: 70, endIndent: 16)
+                          : const SizedBox.shrink(),
                       itemBuilder: (context, i) {
                         final chat = provider.chats[i];
                         return ChatListTile(
