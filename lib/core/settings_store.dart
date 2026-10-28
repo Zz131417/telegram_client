@@ -33,6 +33,7 @@ class SettingsStore extends ChangeNotifier {
             jsonDecode(await _file!.readAsString()) as Map<String, dynamic>;
         proxy = ProxyConfig.fromJsonOrNull(j['proxy'] as Map<String, dynamic>?);
         themeMode = j['themeMode'] as String? ?? 'system';
+        themePreset = j['themePreset'] as String? ?? 'classic';
         lastCredentialChoice = j['lastCredentialChoice'] as int?;
       }
     } catch (_) {
@@ -47,14 +48,22 @@ class SettingsStore extends ChangeNotifier {
       await _file!.writeAsString(jsonEncode({
         'proxy': proxy?.toJson(),
         'themeMode': themeMode,
+        'themePreset': themePreset,
         'lastCredentialChoice': lastCredentialChoice,
       }));
     } catch (_) {}
   }
 
-  /// 设置主题并持久化 + 通知监听者（全局主题即时切换）。
+  /// 设置主题亮度并持久化 + 通知监听者（全局主题即时切换）。
   Future<void> setThemeMode(String mode) async {
     themeMode = mode;
+    notifyListeners();
+    await save();
+  }
+
+  /// 设置主题预设（原版 / Telegram X）并持久化（全局主题即时切换）。
+  Future<void> setThemePreset(String preset) async {
+    themePreset = preset;
     notifyListeners();
     await save();
   }
