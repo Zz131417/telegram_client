@@ -11,6 +11,7 @@ class MockData {
       title: '林晚',
       type: ChatType.private,
       avatarColor: const Color(0xFFE8846B),
+      username: 'linwan',
       lastMessage: Message(
         id: 'm1',
         chatId: 'c1',
@@ -26,6 +27,7 @@ class MockData {
       title: 'Flutter 中文社区',
       type: ChatType.group,
       avatarColor: const Color(0xFF5BAE8E),
+      username: 'fluttercn',
       lastMessage: Message(
         id: 'm2',
         chatId: 'c2',
@@ -41,6 +43,7 @@ class MockData {
       title: '设计灵感',
       type: ChatType.channel,
       avatarColor: const Color(0xFF8A6FE8),
+      username: 'design',
       lastMessage: Message(
         id: 'm3',
         chatId: 'c3',
@@ -57,6 +60,7 @@ class MockData {
       title: '妈妈',
       type: ChatType.private,
       avatarColor: const Color(0xFFE8B14C),
+      username: 'mom',
       lastMessage: Message(
         id: 'm4',
         chatId: 'c4',
