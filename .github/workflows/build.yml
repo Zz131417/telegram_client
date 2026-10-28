@@ -95,7 +95,6 @@ jobs:
           echo "jniLibs contents:"; ls -R android/app/src/main/jniLibs
       - name: Flutter dependencies
         run: flutter pub get
-      - name: Build ${{ matrix.abi }} APK
       - name: Register tg:// URL scheme (Android)
         run: |
           python3 - <<'PY'
@@ -109,6 +108,7 @@ jobs:
           print('android tg scheme ok')
           PY
 
+      - name: Build ${{ matrix.abi }} APK
         run: flutter build apk --release --split-per-abi --target-platform ${{ matrix.target }}
       - name: Upload APK
         uses: actions/upload-artifact@v7
@@ -228,7 +228,6 @@ jobs:
         run: flutter pub get
       # Simulator builds only support debug mode (JIT); release/profile are
       # rejected by Flutter for the simulator target. Debug needs no signing.
-      - name: Build iOS (simulator, debug, unsigned)
       - name: Register tg:// URL scheme (iOS)
         run: |
           python3 - <<'PY'
@@ -243,6 +242,7 @@ jobs:
           print('ios tg scheme ok')
           PY
 
+      - name: Build iOS (simulator, debug, unsigned)
         run: flutter build ios --simulator --debug
       - name: Download & embed libtdjson (iOS simulator)
         run: |
@@ -286,7 +286,6 @@ jobs:
       - name: Flutter dependencies
         run: flutter pub get
       # Build for device with code signing disabled; produces an unsigned Runner.app.
-      - name: Build iOS (device, unsigned)
       - name: Register tg:// URL scheme (iOS)
         run: |
           python3 - <<'PY'
@@ -301,6 +300,7 @@ jobs:
           print('ios tg scheme ok')
           PY
 
+      - name: Build iOS (device, unsigned)
         run: flutter build ios --release --no-codesign
       - name: Download & embed libtdjson (iOS device)
         run: |
@@ -397,7 +397,6 @@ jobs:
           echo "jniLibs contents:"; ls -R android/app/src/main/jniLibs
       - name: Flutter dependencies
         run: flutter pub get
-      - name: Build Wear OS APK (arm64)
       - name: Register tg:// URL scheme (Android)
         run: |
           python3 - <<'PY'
@@ -411,6 +410,7 @@ jobs:
           print('android tg scheme ok')
           PY
 
+      - name: Build Wear OS APK (arm64)
         run: flutter build apk --release --split-per-abi --target-platform android-arm64 -t lib/wear_main.dart
       - name: Upload APK
         uses: actions/upload-artifact@v7
