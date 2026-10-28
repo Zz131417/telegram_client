@@ -185,7 +185,7 @@ class _Section extends StatelessWidget {
           elevation: 0,
           clipBehavior: Clip.antiAlias,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(context.layout.cardRadius),
             side: BorderSide(color: Theme.of(context).dividerColor),
           ),
           child: Column(children: children),
