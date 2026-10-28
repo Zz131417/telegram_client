@@ -1,38 +1,81 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 
-/// 全局主题：Telegram 蓝为主色，圆角 + 柔和阴影，亮/暗双主题。
-class AppTheme {
-  static const Color telegramBlue = Color(0xFF3390EC);
-  static const Color telegramBlueDark = Color(0xFF5EB5F7);
-  static const Color sentBubble = Color(0xFFEEF4FB);
-  static const Color sentBubbleDark = Color(0xFF1F2C3A);
+/// 主题预设：原版 Telegram（默认）与 Telegram X（蓝气泡风格）。
+enum ThemePreset {
+  /// 原版 Telegram：灰底气泡、3390EC 主色。
+  classic,
 
-  static ThemeData light() => _base(
+  /// Telegram X：蓝底气泡、0088CC 主色，深色模式用蓝气泡。
+  x,
+}
+
+extension ThemePresetX on ThemePreset {
+  String get label => switch (this) {
+        ThemePreset.classic => '原版',
+        ThemePreset.x => 'Telegram X',
+      };
+}
+
+/// 全局主题工厂：按预设 + 亮度生成 [ThemeData]。
+class AppTheme {
+  static ThemeData build(ThemePreset preset, Brightness brightness) {
+    switch (preset) {
+      case ThemePreset.classic:
+        return brightness == Brightness.light ? _classicLight() : _classicDark();
+      case ThemePreset.x:
+        return brightness == Brightness.light ? _xLight() : _xDark();
+    }
+  }
+
+  // ---- 原版 Telegram ----
+  static ThemeData _classicLight() => _base(
         brightness: Brightness.light,
+        primary: const Color(0xFF3390EC),
         scaffold: const Color(0xFFF6F7F9),
         surface: Colors.white,
-        primary: telegramBlue,
-        bubble: sentBubble,
+        bubble: const Color(0xFFEEF4FB),
         onBubble: const Color(0xFF1C2733),
         hint: Colors.black54,
       );
 
-  static ThemeData dark() => _base(
+  static ThemeData _classicDark() => _base(
         brightness: Brightness.dark,
+        primary: const Color(0xFF5EB5F7),
         scaffold: const Color(0xFF0E1621),
         surface: const Color(0xFF17212B),
-        primary: telegramBlueDark,
-        bubble: sentBubbleDark,
+        bubble: const Color(0xFF1F2C3A),
+        onBubble: const Color(0xFFE9EDF2),
+        hint: Colors.white60,
+      );
+
+  // ---- Telegram X ----
+  // 特征：0088CC 主色 + 蓝底气泡（深/浅均如此）。
+  static ThemeData _xLight() => _base(
+        brightness: Brightness.light,
+        primary: const Color(0xFF0088CC),
+        scaffold: const Color(0xFFF4F4F4),
+        surface: Colors.white,
+        bubble: const Color(0xFFE6F2FB),
+        onBubble: const Color(0xFF223843),
+        hint: Colors.black54,
+      );
+
+  static ThemeData _xDark() => _base(
+        brightness: Brightness.dark,
+        primary: const Color(0xFF64B5F7),
+        scaffold: const Color(0xFF0F0F0F),
+        surface: const Color(0xFF17212B),
+        bubble: const Color(0xFF2B5278),
         onBubble: const Color(0xFFE9EDF2),
         hint: Colors.white60,
       );
 
   static ThemeData _base({
     required Brightness brightness,
+    required Color primary,
     required Color scaffold,
     required Color surface,
-    required Color primary,
     required Color bubble,
     required Color onBubble,
     required Color hint,
