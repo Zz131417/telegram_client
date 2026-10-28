@@ -7,14 +7,14 @@ import 'package:provider/provider.dart';
 import 'core/logger.dart';
 import 'core/plugin_manager.dart';
 import 'core/settings_store.dart';
-import 'core/js_plugin/confirmation_gateway.dart';
-import 'core/js_plugin/confirmation_ui.dart';
+import 'features/plugins/confirmation_gateway.dart';
+import 'features/plugins/confirmation_ui.dart';
 import 'theme/app_theme.dart';
-import 'providers/chats_provider.dart';
+import 'features/chat/providers/chats_provider.dart';
 import 'services/td_service.dart';
 import 'services/td_lib_service.dart';
 import 'services/service_notifier.dart';
-import 'screens/login_screen.dart';
+import 'features/auth/screens/login_screen.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
