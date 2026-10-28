@@ -9,6 +9,7 @@ import '../../../routes/transitions.dart';
 import '../widgets/chat_list_tile.dart';
 import './chat_detail_screen.dart';
 import '../tg_link.dart';
+import '../tg_deeplink.dart';
 import '../../settings/screens/logs_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../../theme/app_theme.dart';
