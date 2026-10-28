@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import '../../../core/logger.dart';
 import '../../../models/chat.dart';
@@ -19,9 +18,34 @@ class ChatsProvider extends ChangeNotifier {
 
   List<Chat> _chats = const [];
   bool _loading = false;
+  // 置顶集合：与拉取的会话列表解耦，刷新后依然保持置顶状态。
+  final Set<String> _pinnedIds = {};
 
-  List<Chat> get chats => _chats;
+  List<Chat> get chats {
+    if (_pinnedIds.isEmpty) return _chats;
+    final sorted = [..._chats];
+    sorted.sort((a, b) {
+      final pa = _pinnedIds.contains(a.id);
+      final pb = _pinnedIds.contains(b.id);
+      if (pa == pb) return 0; // 保持原有（按时间）顺序
+      return pa ? -1 : 1; // 置顶的排到最前
+    });
+    return sorted
+        .map((c) => c.copyWith(isPinned: _pinnedIds.contains(c.id)))
+        .toList();
+  }
+
   bool get loading => _loading;
+
+  /// 切换某个会话的置顶状态。
+  void togglePin(String id) {
+    if (_pinnedIds.contains(id)) {
+      _pinnedIds.remove(id);
+    } else {
+      _pinnedIds.add(id);
+    }
+    notifyListeners();
+  }
 
   Future<void> load() async {
     log.i('Chats', '加载会话列表');
